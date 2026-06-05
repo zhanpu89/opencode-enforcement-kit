@@ -1,0 +1,30 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": [
+    "coding-rules.md"
+  ],
+  "agent": {
+    "coding-executor": {
+      "description": "编码执行者。先验证、后编码、再验证的编码流程。用户要求写代码、实现功能时使用。",
+      "mode": "subagent",
+      "permission": {
+        "edit": "allow",
+        "bash": "allow"
+      }
+    }
+  },
+  "permission": {
+    "edit": "ask",
+    "bash": {
+      "git *": "allow",
+      "scripts/gate.sh *": "allow",
+      "scripts/verify-coding.sh *": "allow",
+      "scripts/doc-gate.sh *": "allow",
+      "*": "ask"
+    }
+  },
+  "plugin": [
+    ".opencode/plugin/stage-gate.js",
+    ".opencode/plugin/verify-gate.js"
+  ]
+}
