@@ -54,13 +54,21 @@ safe_cp "$KIT_DIR/.opencode/plugin/verify-gate.js" "$TARGET/.opencode/plugin/ver
 echo "  ✅ .opencode/plugin/stage-gate.js"
 echo "  ✅ .opencode/plugin/verify-gate.js"
 
-# ---- 4. coding-rules ----
-echo "[4/7] 复制 coding-rules.md..."
+# ---- 4. skills ----
+echo "[4/8] 复制 skills...（prd-writer / system-architect / task-decomposer / code-reviewer / review-expert）"
+if [ -d "$KIT_DIR/.opencode/skills" ]; then
+    mkdir -p "$TARGET/.opencode/skills"
+    cp -r "$KIT_DIR/.opencode/skills/"* "$TARGET/.opencode/skills/"
+    echo "  ✅ .opencode/skills/"
+fi
+
+# ---- 5. coding-rules ----
+echo "[5/8] 复制 coding-rules.md..."
 safe_cp "$KIT_DIR/coding-rules.md" "$TARGET/coding-rules.md"
 echo "  ✅ coding-rules.md"
 
-# ---- 5. CLAUDE.md（幂等合并） ----
-echo "[5/7] 处理 CLAUDE.md..."
+# ---- 6. CLAUDE.md（幂等合并） ----
+echo "[6/8] 处理 CLAUDE.md..."
 
 ENFORCE_HEADER=$(cat <<'HEADER'
 # CLAUDE.md
@@ -91,8 +99,8 @@ else
     echo "  ✅ 已创建"
 fi
 
-# ---- 6. opencode.json（幂等合并） ----
-echo "[6/7] 处理 opencode.json..."
+# ---- 7. opencode.json（幂等合并） ----
+echo "[7/8] 处理 opencode.json..."
 
 if [ -f "$TARGET/opencode.json" ]; then
     node -e "
@@ -158,8 +166,8 @@ else
 fi
 
 
-# ---- 7. .gitignore ----
-echo "[7/7] 处理 .gitignore..."
+# ---- 8. .gitignore ----
+echo "[8/8] 处理 .gitignore..."
 TARGET_GITIGNORE="$TARGET/.gitignore"
 GITIGNORE_ENTRIES=(
   ""
