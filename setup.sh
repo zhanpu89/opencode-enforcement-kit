@@ -28,7 +28,7 @@ echo "=========================================="
 echo ""
 
 # ---- 1. 门禁脚本 ----
-echo "[1/6] 复制 scripts...（gate.sh + doc-gate.sh + verify-coding.sh + README）"
+echo "[1/7] 复制 scripts...（gate.sh + doc-gate.sh + verify-coding.sh）"
 mkdir -p "$TARGET/scripts"
 safe_cp "$KIT_DIR/scripts/gate.sh" "$TARGET/scripts/gate.sh"
 chmod +x "$TARGET/scripts/gate.sh"
@@ -36,20 +36,18 @@ safe_cp "$KIT_DIR/scripts/doc-gate.sh" "$TARGET/scripts/doc-gate.sh"
 chmod +x "$TARGET/scripts/doc-gate.sh"
 safe_cp "$KIT_DIR/scripts/verify-coding.sh" "$TARGET/scripts/verify-coding.sh"
 chmod +x "$TARGET/scripts/verify-coding.sh"
-safe_cp "$KIT_DIR/README.md" "$TARGET/README.md"
 echo "  ✅ scripts/gate.sh（统一入口）"
 echo "  ✅ scripts/doc-gate.sh"
 echo "  ✅ scripts/verify-coding.sh"
-echo "  ✅ README.md"
 
 # ---- 2. coding-executor agent ----
-echo "[2/6] 复制 coding-executor agent..."
+echo "[2/7] 复制 coding-executor agent..."
 mkdir -p "$TARGET/.opencode/agent"
 safe_cp "$KIT_DIR/.opencode/agent/coding-executor.md" "$TARGET/.opencode/agent/coding-executor.md"
 echo "  ✅ .opencode/agent/coding-executor.md"
 
 # ---- 3. plugins ----
-echo "[3/6] 复制 plugins...（stage-gate.js + verify-gate.js）"
+echo "[3/7] 复制 plugins...（stage-gate.js + verify-gate.js）"
 mkdir -p "$TARGET/.opencode/plugin"
 safe_cp "$KIT_DIR/.opencode/plugin/stage-gate.js" "$TARGET/.opencode/plugin/stage-gate.js"
 safe_cp "$KIT_DIR/.opencode/plugin/verify-gate.js" "$TARGET/.opencode/plugin/verify-gate.js"
@@ -57,12 +55,12 @@ echo "  ✅ .opencode/plugin/stage-gate.js"
 echo "  ✅ .opencode/plugin/verify-gate.js"
 
 # ---- 4. coding-rules ----
-echo "[4/6] 复制 coding-rules.md..."
+echo "[4/7] 复制 coding-rules.md..."
 safe_cp "$KIT_DIR/coding-rules.md" "$TARGET/coding-rules.md"
 echo "  ✅ coding-rules.md"
 
 # ---- 5. CLAUDE.md（幂等合并） ----
-echo "[5/6] 处理 CLAUDE.md..."
+echo "[5/7] 处理 CLAUDE.md..."
 
 ENFORCE_HEADER=$(cat <<'HEADER'
 # CLAUDE.md
@@ -94,7 +92,7 @@ else
 fi
 
 # ---- 6. opencode.json（幂等合并） ----
-echo "[6/6] 处理 opencode.json..."
+echo "[6/7] 处理 opencode.json..."
 
 if [ -f "$TARGET/opencode.json" ]; then
     node -e "
@@ -157,6 +155,31 @@ console.log('  ✅ opencode.json 已合并');
 else
     cp "$KIT_DIR/opencode.json" "$TARGET/opencode.json"
     echo "  ✅ opencode.json 已创建"
+fi
+
+
+# ---- 7. .gitignore ----
+echo "[7/7] 处理 .gitignore..."
+TARGET_GITIGNORE="$TARGET/.gitignore"
+GITIGNORE_ENTRIES=(
+  ""
+  "# opencode-enforcement-kit state files"
+  ".verify/"
+  "doc/.gate/"
+)
+if [ -f "$TARGET_GITIGNORE" ]; then
+    for entry in "${GITIGNORE_ENTRIES[@]}"; do
+        if [ -z "$entry" ]; then
+            continue
+        fi
+        if ! grep -qF "$entry" "$TARGET_GITIGNORE" 2>/dev/null; then
+            echo "$entry" >> "$TARGET_GITIGNORE"
+        fi
+    done
+    echo "  ✅ .gitignore 已追加"
+else
+    printf '%s\n' "${GITIGNORE_ENTRIES[@]}" > "$TARGET_GITIGNORE"
+    echo "  ✅ .gitignore 已创建"
 fi
 
 echo ""

@@ -27,12 +27,13 @@ usage() {
     echo "  entity=ok   实体与表结构字段对齐"
     echo "  no-drift=yes 无文档未定义的自由发挥代码"
     echo ""
-    echo "Memory 参数（可选，通过后自动输出 memory_save_summary 调用模板）:"
-    echo "  --project    项目名称"
-    echo "  --title      任务标题"
-    echo "  --files      修改的文件路径（逗号分隔）"
-    echo "  --tags       标签（逗号分隔）"
-    echo "  --module     模块名"
+echo "Memory 参数（可选，通过后自动输出 memory_save_summary 调用模板）:"
+  echo "  --session-id 自定义 session ID（默认自动生成）"
+  echo "  --project    项目名称"
+  echo "  --title      任务标题"
+  echo "  --files      修改的文件路径（逗号分隔）"
+  echo "  --tags       标签（逗号分隔）"
+  echo "  --module     模块名"
     exit 1
 }
 
@@ -93,6 +94,7 @@ do_post() {
     shift 2
 
     # Parse optional memory fields
+    local mem_session_id=""
     local mem_project=""
     local mem_title=""
     local mem_files=""
@@ -100,6 +102,7 @@ do_post() {
     local mem_module=""
     while [ $# -gt 0 ]; do
         case "$1" in
+            --session-id) mem_session_id="$2"; shift 2 ;;
             --project)    mem_project="$2";  shift 2 ;;
             --title)      mem_title="$2";    shift 2 ;;
             --files)      mem_files="$2";    shift 2 ;;
@@ -136,7 +139,7 @@ do_post() {
     all_pass=true
 
     echo ""
-    echo "--- 四维核对结果 ---"
+    echo "--- 五维核对结果 ---"
     for check in "${required[@]}"; do
         val="${checks[$check]}"
         case "$check" in
@@ -182,15 +185,17 @@ EOF
         echo "  推荐下一步（管道自动推进）:"
         echo "    1. 触发 code-reviewer 审查代码"
         echo "    2. 归零后 → bash scripts/gate.sh pass review"
-        echo "    3. 触发 tester 生成测试用例并执行"
-        echo "    4. 全部通过后 → bash scripts/gate.sh pass test"
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
         echo ""
 
         # 如果提供了 memory 字段，输出 memory_save_summary 调用模板
         if [ -n "$mem_project" ] || [ -n "$mem_title" ]; then
             local session_id
-            session_id="session-$(date '+%Y%m%d')-${module}-${mem_title:-task}"
+            if [ -n "$mem_session_id" ]; then
+                session_id="$mem_session_id"
+            else
+                session_id="session-$(date '+%Y%m%d')-${module}-${mem_title:-task}"
+            fi
             # Clean session_id: lowercase, replace non-alphanum with hyphen
             session_id=$(echo "$session_id" | tr '[:upper:]' '[:lower:]' | sed 's/[^a-z0-9-]/-/g' | sed 's/--*/-/g' | sed 's/^-//;s/-$//')
 

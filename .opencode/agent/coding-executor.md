@@ -37,7 +37,7 @@ bash scripts/gate.sh pre <模块名> <相关文档路径>
 
 ### 阶段三：后置验证 + 保存记忆
 
-**子步骤 5：四维核对 + 编码后验证**
+**子步骤 5：五维核对 + 编码后验证**
 运行：
 ```bash
 bash scripts/gate.sh post <模块名> 'biz=ok urls=ok params=ok entity=ok no-drift=yes'
@@ -63,23 +63,17 @@ bash scripts/gate.sh post <模块名> 'biz=ok urls=ok params=ok entity=ok no-dri
 2. 不询问用户，直接触发 code-reviewer skill 审查代码
    └─ 发现问题 → coding-executor 修复 → 重新 code-reviewer
    └─ 归零后 → bash scripts/gate.sh pass review (须满足 doc/review/*代码评审报告* 存在)
-3. 触发 tester skill 生成测试用例并执行测试
-   └─ 测试不通过 → coding-executor 修复 → 重新测试
-   └─ 全部通过后 → bash scripts/gate.sh pass test (须满足 doc/tester/*测试报告* 存在)
 ```
 
-如 code-reviewer 或 tester 不在当前上下文中，则输出清晰的分步指令：
+如 code-reviewer 不在当前上下文中，则输出清晰的分步指令：
 ```
 ✅ 编码完成。请执行以下步骤推进管道：
   1. 使用 code-reviewer 审查代码
   2. 如有问题，coding-executor 修复 → 重复步骤 1 直至归零
   3. bash scripts/gate.sh pass review
-  4. 使用 tester 生成测试用例并执行
-  5. 如有失败，coding-executor 修复 → 重复步骤 4
-  6. bash scripts/gate.sh pass test
 ```
 
-**禁止**输出模糊的"需要继续进入测试或代码评审阶段吗？"——管道流向是确定的：先 code-review 归零，再 test 归零。
+**禁止**输出模糊的"需要继续进入代码评审阶段吗？"——管道流向是确定的：编码完成后必须 code-review 归零。
 
 ---
 

@@ -22,8 +22,9 @@ This applies to *everything*: config changes, doc edits, code fixes, even "trivi
 | `bash scripts/gate.sh unpass <stage> [reason]` | Revoke stage pass |
 | `bash scripts/gate.sh pre <module> <doc>` | Pre-coding verification |
 | `bash scripts/gate.sh post <module> '<report>'` | Post-coding verification |
+| `bash scripts/gate.sh diagnose` | Diagnose gate status |
 
-Stages: `prd`, `arch`, `detailed`, `test`, `review`
+Stages: `prd`, `arch`, `detailed`, `code`, `review`
 
 ## Architecture
 
@@ -32,6 +33,7 @@ Stages: `prd`, `arch`, `detailed`, `test`, `review`
 - **`.opencode/plugin/verify-gate.js`** — Blocks editing until `.verify/` has a pre-check record
 - **`.opencode/agent/coding-executor.md`** — The only agent authorized to modify files; enforces a 3-stage flow (load context → read docs & code → verify & save memory)
 - **`opencode.json`** — Configures permissions: `edit: ask`, bash scripts auto-allowed
+- **`.opencode/skills/`** — 5 development skills (prd-writer, system-architect, task-decomposer, code-reviewer, review-expert) with templates and checklists
 
 ## Three-Stage Coding Flow (coding-executor)
 
@@ -39,9 +41,9 @@ Stages: `prd`, `arch`, `detailed`, `test`, `review`
 2. **Code**: Read design docs in `doc/detailed/`, implement exactly per spec
 3. **Post-check**: 5-dimension alignment check + `bash scripts/gate.sh post <module> '<report>'` + save memory
 
-## Six Development Stages
+## Development Stages
 
-PRD → Architecture → Detailed Design → Coding → Testing → Code Review
+PRD → Architecture → Detailed Design → Coding → Code Review
 
 Each stage requires `review-expert` to pass before the next stage is unblocked. `gate.sh pass/unpass` manages the transitions.
 

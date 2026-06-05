@@ -26,21 +26,20 @@ function findProjectRoot(start) {
   return start;
 }
 
-function shouldBlock(filePath) {
-  // Allow doc/, .opencode/, scripts/ edits at any stage
-  if (
-    filePath.startsWith("doc/") ||
-    filePath.startsWith("./doc/") ||
-    filePath.startsWith(".opencode/") ||
-    filePath.startsWith("./.opencode/") ||
-    filePath.startsWith("scripts/") ||
-    filePath.startsWith("./scripts/") ||
-    filePath.startsWith(join(homedir, ".config/opencode/skills/")) ||
-    filePath.startsWith(join(homedir, ".agents/skills/"))
-  ) {
+function shouldBlock(filePath, projectRoot) {
+  const allowed = [
+    join(projectRoot, "doc"),
+    join(projectRoot, ".opencode"),
+    join(projectRoot, "scripts"),
+    join(homedir, ".config/opencode/skills"),
+    join(homedir, ".agents/skills"),
+  ];
+  // Also allow relative paths (for when OpenCode sends relative paths)
+  const relativeAllowed = ["doc/", "./doc/", ".opencode/", "./.opencode/", "scripts/", "./scripts/"];
+  if (relativeAllowed.some(p => filePath.startsWith(p))) {
     return false;
   }
-  return true;
+  return !allowed.some(dir => filePath.startsWith(dir));
 }
 
 module.exports = async ({ directory }) => {
@@ -55,7 +54,7 @@ module.exports = async ({ directory }) => {
       if (!filePath) return;
 
       // Only check gates for code/config files outside doc/.opencode/scripts/
-      if (!shouldBlock(filePath)) return;
+      if (!shouldBlock(filePath, projectRoot)) return;
 
       const detailedPass = join(projectRoot, "doc/.gate/detailed.pass");
       if (existsSync(detailedPass)) return;
@@ -70,7 +69,7 @@ module.exports = async ({ directory }) => {
         "  3. 详细设计   → doc/detailed/ → review-expert 评审归零",
         "",
         "每个阶段完成后需执行:",
-        "  bash doc-gate.sh pass <stage>",
+        "  bash scripts/gate.sh pass <stage>",
         "",
         "当 doc/.gate/detailed.pass 存在后即可正常编码。",
         "",

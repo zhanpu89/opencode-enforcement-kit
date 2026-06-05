@@ -30,13 +30,13 @@
 ### 阶段三：后置验证 + 保存记忆
 
 ```
-5. 四维核对 + bash scripts/gate.sh post <模块> '<核对报告>'
+5. 五维核对 + bash scripts/gate.sh post <模块> '<核对报告>'
    → 任一维度未确认就 exit 1，必须修复重跑
 6. 验证通过后调 memory_save_summary() 记录本次编码
    → 自动继承 verify-coding.sh post 输出的字段模板
 ```
 
-### 四维核对
+### 五维核对
 
 | # | 核对项 | 你要做什么 |
 |---|--------|----------|
