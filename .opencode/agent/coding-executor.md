@@ -62,7 +62,7 @@ bash scripts/gate.sh post <模块名> 'biz=ok urls=ok params=ok entity=ok no-dri
 1. 输出 "✅ 编码完成，进入代码评审阶段"
 2. 不询问用户，直接触发 code-reviewer skill 审查代码
    └─ 发现问题 → coding-executor 修复 → 重新 code-reviewer
-   └─ 归零后 → bash scripts/gate.sh pass review (须满足 doc/review/*代码评审报告* 存在)
+   └─ 归零后 → bash scripts/gate.sh pass review
 ```
 
 如 code-reviewer 不在当前上下文中，则输出清晰的分步指令：

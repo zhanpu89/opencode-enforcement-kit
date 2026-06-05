@@ -12,6 +12,51 @@ description: |
   - 已有详设，只需编码（coding-executor）
 ---
 
+## 记忆集成（跨会话上下文）
+
+本 skill 利用 `ai_memory` MCP 工具实现跨会话上下文持久化。
+
+### 加载上下文（每次启动时首先执行）
+
+在 Step 0 之前执行：
+
+```
+memory_init_session(project_name="当前项目")
+memory_search_summaries(module="当前模块", tags="detailed", limit=5)
+memory_search_summaries(module="当前模块", tags="arch", limit=3)
+memory_search_summaries(module="当前模块", tags="prd", limit=3)
+memory_related_decisions(project_name="当前项目", query="详设|API|接口|数据模型", limit=10)
+```
+
+### 保存关键决策
+
+在 Step 2.5（功能链推导）用户确认后，调用：
+```
+memory_add_decision(
+  session_id=session-{YYYYMMDD}-detailed-{module},
+  decision_type=接口契约,
+  description="功能链推导结果/接口清单/跨模块依赖列表",
+  reasoning="7条规则扫描+正向比对结果"
+)
+```
+
+### 保存任务摘要
+
+在 Step 6（输出汇总）完成后，调用：
+```
+memory_save_summary(
+  session_id=session-{YYYYMMDD}-detailed-{module},
+  task_title="详设: {模块名}",
+  summary_content=详细设计摘要（包含模块数/接口数/DDL表数/前端页面数）、
+  file_paths=doc/detailed/下生成的详设文件路径（逗号分隔）、
+  project_name=当前项目名、
+  tags=detailed,详设,{模块名}、
+  module={模块名}、
+  status=completed、
+  next_steps="进入编码阶段，使用 coding-executor"
+)
+```
+
 # Task Decomposer
 
 将 SAD 拆解为完整详设文档体系。输出：`doc/detailed/`。

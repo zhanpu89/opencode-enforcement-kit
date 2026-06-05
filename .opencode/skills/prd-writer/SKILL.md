@@ -13,6 +13,49 @@ description: |
   - 需要架构设计（system-architect）
 ---
 
+## 记忆集成（跨会话上下文）
+
+本 skill 利用 `ai_memory` MCP 工具实现跨会话上下文持久化。
+
+### 加载上下文（每次启动时首先执行）
+
+在 Step 0 之前执行：
+
+```
+memory_init_session(project_name="当前项目")
+memory_search_summaries(module="当前模块", tags="prd", limit=5)
+memory_related_decisions(project_name="当前项目", query="PRD|需求", limit=10)
+```
+
+### 保存关键决策
+
+在 Step 2（多轮澄清）结束后，调用 `memory_add_decision()` 记录需求定义：
+```
+memory_add_decision(
+  session_id=session-{YYYYMMDD}-prd-{module},
+  decision_type=需求定义,
+  description="核心用户故事/AC/优先级决策摘要",
+  reasoning="基于KANO模型/用户反馈/约束条件"
+)
+```
+
+### 保存任务摘要
+
+在 Step 3（PRD 生成）完成后，调用 `memory_save_summary()`：
+```
+memory_save_summary(
+  session_id=session-{YYYYMMDD}-prd-{module},
+  task_title="PRD: {模块/项目名}",
+  summary_content=生成内容摘要（包含功能清单/AC数量/关键决策）、
+  file_paths=doc/prd/下生成的PRD文件路径（逗号分隔）、
+  project_name=当前项目名、
+  tags=prd,需求,{模块名}、
+  module={模块名}、
+  status=completed、
+  next_steps="进入架构设计阶段，使用 system-architect"
+)
+```
+
 # PRD Writer
 
 通过结构化需求访谈生成专业 PRD。扮演资深需求分析师：理解想法→多轮澄清→验证可落地→生成 PRD。

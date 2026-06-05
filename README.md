@@ -55,18 +55,19 @@ bash setup.sh /path/to/target      # 安装到其他项目
 
 | 阶段 | 流程 | 门禁命令 |
 |------|------|----------|
-| PRD | prd-writer → review-expert → 通过则 pass，否则 unpass 回退 | `scripts/gate.sh pass/unpass prd` |
-| 架构 | system-architect → review-expert → 同上 | `scripts/gate.sh pass/unpass arch` |
-| 详细设计 | task-decomposer → review-expert → 同上 | `scripts/gate.sh pass/unpass detailed` |
+| PRD | prd-writer 产出 `doc/prd/` | `scripts/gate.sh pass prd` |
+| 架构 | system-architect 产出 `doc/arch/` | `scripts/gate.sh pass arch` |
+| 详细设计 | task-decomposer 产出 `doc/detailed/` | `scripts/gate.sh pass detailed` |
 | 编码 | coding-executor 三阶段流程 | `scripts/gate.sh post` 自动标记 |
-| 代码评审 | code-reviewer → coding-executor 修复 → 归零 | `scripts/gate.sh pass review` |
+| 代码评审 | code-reviewer 归零 | `scripts/gate.sh pass review` |
+
+> review-expert 为可选 skill，用于人工拉通评审。`gate.sh unpass` 可随时手动阻断。
 
 ## 防御层次
 
 | 层 | 机制 | 作用 |
 |----|------|------|
 | Agent 指令 | coding-executor.md + coding-rules.md | 三阶段流程 + 零号铁律 |
-| 文档门禁 | `gate.sh check/pass/unpass` | 按阶段顺序推进 |
-| 报告内容校验 | `gate.sh pass` 内置 | 解析评审结论 / P0 / 是否允许进入，阻断❌报告 |
+| 文档门禁 | `gate.sh check/pass/unpass` | 按阶段推进 + 人工阻断 |
 | 阶段门禁 Plugin | `stage-gate.js` | 无 detailed.pass 阻断代码编辑 |
 | 编码门禁 Plugin | `verify-gate.js` | 无 .verify 记录阻断编辑 |

@@ -14,6 +14,50 @@ description: |
   - 纯技术问答
 ---
 
+## 记忆集成（跨会话上下文）
+
+本 skill 利用 `ai_memory` MCP 工具实现跨会话上下文持久化。
+
+### 加载上下文（每次启动时首先执行）
+
+在 Step 0 之前执行：
+
+```
+memory_init_session(project_name="当前项目")
+memory_search_summaries(module="当前模块", tags="review", limit=5)
+memory_search_summaries(module="当前模块", limit=3)
+memory_related_decisions(project_name="当前项目", query="评审", limit=10)
+```
+
+### 保存关键决策
+
+在 Step 4（评审报告生成）前，调用：
+```
+memory_add_decision(
+  session_id=session-{YYYYMMDD}-review-{docType}-{module},
+  decision_type=评审结论,
+  description="阻断项清单与评审结论（通过/有条件/不通过）",
+  reasoning="检查清单+风险等级评估结果"
+)
+```
+
+### 保存任务摘要
+
+在 Step 4 完成后，调用：
+```
+memory_save_summary(
+  session_id=session-{YYYYMMDD}-review-{docType}-{module},
+  task_title="评审: {docType} - {模块名}",
+  summary_content=评审摘要（包含P0数量/结论/下一步行动）、
+  file_paths=doc/review/下生成的评审报告路径、
+  project_name=当前项目名、
+  tags=review,评审,{模块名}、
+  module={模块名}、
+  status=completed、
+  next_steps="如阻断则修复后重新提交评审；通过则 gate.sh pass {stage}"
+)
+```
+
 # Review Expert
 
 基于"因果链闭环"方法论，对产出物进行结构化评审，阻断不合格物进入下一阶段。

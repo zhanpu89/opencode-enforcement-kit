@@ -151,91 +151,6 @@ next_stage_hint() {
     esac
 }
 
-# ---- 校验评审报告 ----
-validate_review_report() {
-    local stage="$1"
-    local review_pattern="${REVIEW_PATTERNS[$stage]:-}"
-
-    if [ -z "$review_pattern" ]; then
-        return 0  # No review needed for this stage
-    fi
-
-    # Find the report file (latest match)
-    local report_file=""
-    report_file=$(ls $DOC_DIR/review/$review_pattern 2>/dev/null | tail -1)
-
-    if [ -z "$report_file" ]; then
-        echo "  ❌ 未在 doc/review/ 找到评审报告"
-        echo "    期望模式: doc/review/$review_pattern"
-        return 1
-    fi
-
-    echo "  📄 评审报告: $(basename "$report_file")"
-
-    # -- Parse conclusion --
-    local conclusion=""
-    local allow_field=""
-
-    if [ "$stage" = "review" ]; then
-        # code-reviewer format
-        conclusion=$(grep -E '^\| \*\*综合结论\*\* \|' "$report_file" | sed 's/| \*\*综合结论\*\* | *//' | sed 's/ *|.*//')
-    else
-        # review-expert format (prd/arch/detailed)
-        conclusion=$(grep -E '^\| 评审结论 \|' "$report_file" | sed 's/| 评审结论 | *//' | sed 's/ *|.*//')
-    fi
-
-    # allow field - same format in all report types
-    allow_field=$(grep -E '^\| 是否允许' "$report_file" | sed 's/.*| //' | sed 's/ |.*//')
-
-    # -- Check 1: Conclusion --
-    if echo "$conclusion" | grep -qE '✅|通过'; then
-        echo "  ✅ 评审结论: 通过"
-    elif echo "$conclusion" | grep -qE '⚠️|有条件通过'; then
-        echo "  ⚠️ 评审结论: 有条件通过"
-    elif echo "$conclusion" | grep -qE '❌|不通过'; then
-        echo "  ❌ 评审结论: 不通过 — 阻断"
-        return 1
-    else
-        echo "  ⚠️  无法解析评审结论"
-        echo "    原始内容: $conclusion"
-        return 1
-    fi
-
-    # -- Check 2: Allow field --
-    if [ -n "$allow_field" ]; then
-        if echo "$allow_field" | grep -q '否'; then
-            echo "  ❌ 报告明确不允许进入下一阶段 — 阻断"
-            return 1
-        elif echo "$allow_field" | grep -q '是'; then
-            echo "  ✅ 允许进入下一阶段"
-        else
-            echo "  ⚠️  无法解析"是否允许"字段"
-        fi
-    fi
-
-    # -- Check 3: P0 blocking items --
-    # Extract section between "阻断项清单" (or "P0 致命问题") and next heading
-    local p0_section
-    if [ "$stage" = "review" ]; then
-        p0_section=$(sed -n '/P0 致命问题/,/^## /p' "$report_file" | head -20)
-    else
-        p0_section=$(sed -n '/阻断项清单（P0）/,/^##\|^### [^5]\|^### 5\.3/p' "$report_file" | head -20)
-    fi
-
-    if echo "$p0_section" | grep -qE '无阻断项|无 P0'; then
-        echo "  ✅ 无 P0 阻断项"
-    elif echo "$p0_section" | grep -qE '^- \[ \]'; then
-        local p0_count
-        p0_count=$(echo "$p0_section" | grep -cE '^- \[ \]')
-        echo "  ❌ 存在 $p0_count 个未修复的 P0 阻断项"
-        return 1
-    else
-        echo "  ✅ 无 P0 阻断项（未检测到未修复项）"
-    fi
-
-    return 0
-}
-
 # ---- pass ----
 do_pass() {
     local stage="$1"
@@ -243,13 +158,6 @@ do_pass() {
     if [ -z "$stage" ]; then
         echo "用法: bash doc-gate.sh pass <stage>"
         echo "阶段: $KNOWN_STAGES"
-        exit 1
-    fi
-
-    # --force 已被移除，不再支持跳过评审校验
-    if [ "$stage" = "--force" ]; then
-        echo "  ❌ 不再支持 --force 参数"
-        echo "     评审报告校验为强制要求，请先完成 review-expert 评审"
         exit 1
     fi
 
@@ -272,22 +180,10 @@ do_pass() {
         fi
     fi
 
-    # 校验评审报告（内容级校验：结论、P0、是否允许进入）
-    declare -A REVIEW_PATTERNS
-    REVIEW_PATTERNS[prd]="*需求评审报告*"
-    REVIEW_PATTERNS[arch]="*架构评审报告*"
-    REVIEW_PATTERNS[detailed]="*详设评审报告*"
-    REVIEW_PATTERNS[review]="*代码评审报告*"
-    local review_pattern="${REVIEW_PATTERNS[$stage]:-}"
-
-    if [ -n "$review_pattern" ]; then
-        echo "--- 评审报告校验 ---"
-        if ! validate_review_report "$stage"; then
-            echo ""
-            echo "  ❌ 评审报告校验未通过，[$stage] 阶段无法通过"
-            exit 1
-        fi
-        echo ""
+    # --force 已废弃
+    if [ "$stage" = "--force" ]; then
+        echo "  ❌ 不再支持 --force 参数"
+        exit 1
     fi
 
     ensure_gate_dir

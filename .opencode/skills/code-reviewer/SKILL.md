@@ -12,6 +12,50 @@ description: |
   - 纯技术问答
 ---
 
+## 记忆集成（跨会话上下文）
+
+本 skill 利用 `ai_memory` MCP 工具实现跨会话上下文持久化。
+
+### 加载上下文（每次启动时首先执行）
+
+在 Step 0 之前执行：
+
+```
+memory_init_session(project_name="当前项目")
+memory_search_summaries(module="当前模块", tags="code-review", limit=5)
+memory_search_summaries(module="当前模块", tags="coding", limit=3)
+memory_related_decisions(project_name="当前项目", query="代码评审|审查", limit=10)
+```
+
+### 保存关键决策
+
+在 Step 1.5（问题分级汇总）时，调用：
+```
+memory_add_decision(
+  session_id=session-{YYYYMMDD}-review-code-{module},
+  decision_type=代码评审,
+  description="P0/P1 问题清单与阻断结论",
+  reasoning="检查清单+安全规则+设计文档比对结果"
+)
+```
+
+### 保存任务摘要
+
+在 Step 2（评审报告生成）完成后，调用：
+```
+memory_save_summary(
+  session_id=session-{YYYYMMDD}-review-code-{module},
+  task_title="代码评审: {模块名}",
+  summary_content=评审摘要（包含P0/P1数量/评审结论/主要问题类型）、
+  file_paths=doc/review/下生成的评审报告路径、
+  project_name=当前项目名、
+  tags=code-review,代码评审,{模块名}、
+  module={模块名}、
+  status=completed、
+  next_steps="如有P0需coding-executor修复后重新评审；归零后 gate.sh pass review"
+)
+```
+
 # Code Reviewer
 
 对代码进行全面评审，输出报告和质量门禁结论。纯后端模式（五维度）或全栈模式（七维度）。

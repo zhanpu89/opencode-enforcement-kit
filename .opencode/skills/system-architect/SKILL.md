@@ -13,6 +13,60 @@ description: |
   - 已有 SAD，需任务分解（task-decomposer）
 ---
 
+## 记忆集成（跨会话上下文）
+
+本 skill 利用 `ai_memory` MCP 工具实现跨会话上下文持久化。
+
+### 加载上下文（每次启动时首先执行）
+
+在 Step 1 之前执行：
+
+```
+memory_init_session(project_name="当前项目")
+memory_search_summaries(module="当前模块", tags="arch", limit=5)
+memory_search_summaries(module="当前模块", tags="prd", limit=3)
+memory_related_decisions(project_name="当前项目", query="架构|技术选型", limit=10)
+```
+
+### 保存关键决策
+
+在 Step 3（PRD 分析 + NFR 量化）结束后，调用：
+```
+memory_add_decision(
+  session_id=session-{YYYYMMDD}-arch-{module},
+  decision_type=技术方案,
+  description="NFR 量化值/技术选型结果/关键架构决策",
+  reasoning="基于PRD约束/团队经验/行业最佳实践"
+)
+```
+
+在 Step 4（架构设计）技术选型完成后，调用：
+```
+memory_add_decision(
+  session_id=session-{YYYYMMDD}-arch-{module},
+  decision_type=架构选型,
+  description="技术栈选型与组件选择决策",
+  reasoning="6维度论证结果"
+)
+```
+
+### 保存任务摘要
+
+在 Step 4 全部生成完成后，调用：
+```
+memory_save_summary(
+  session_id=session-{YYYYMMDD}-arch-{module},
+  task_title="架构: {模块/项目名}",
+  summary_content=架构设计摘要（包含技术栈/模块划分/NFR指标）、
+  file_paths=doc/arch/下生成的SAD文件路径（逗号分隔）、
+  project_name=当前项目名、
+  tags=arch,架构,{模块名}、
+  module={模块名}、
+  status=completed、
+  next_steps="进入详细设计阶段，使用 task-decomposer"
+)
+```
+
 # 系统架构师
 
 将 PRD 转化为生产级架构文档。输入：`doc/prd/`；输出：`doc/arch/`。
