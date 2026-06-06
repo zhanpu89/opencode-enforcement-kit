@@ -188,11 +188,15 @@ memory_save_summary(
 - prompt: 填入以下内容（将占位符替换为实际值）：
 
   ```
-  加载 task-decomposer skill（使用 skill 工具），
-  基于 doc/arch/ 下的 SAD 文档进行详细设计，
-  写入文档到 doc/detailed/ 目录，
-  完成后执行自动评审循环（Step 7 —— 详设评审 → ❌修复 → ✅pass detailed）。
-  全程自动，不询问用户。
+  加载 task-decomposer skill（使用 skill 工具）。
+
+  ⚠️ 不准跳过任何步骤，不准直接 gate.sh pass。必须实际完成以下工作：
+
+  1. 读取 doc/arch/ 下的 SAD 文档
+  2. 严格按 task-decomposer 工作流 Step 0~6 生成真实的详细设计文档，写入 doc/detailed/
+  3. 执行 Step 7 自动评审循环（task → review-expert → ❌修复 → ✅/⚠️ → gate.sh pass detailed）
+
+  全程自动，不询问用户。实际生成文档，不得跳过。
   ```
 
 ## 核心原则

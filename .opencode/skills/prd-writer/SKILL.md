@@ -177,11 +177,16 @@ memory_save_summary(
 - prompt: 填入以下内容（将占位符替换为实际值）：
 
   ```
-  加载 system-architect skill（使用 skill 工具），
-  基于 doc/prd/ 下的 PRD 文档进行架构设计，
-  写入文档到 doc/arch/ 目录，
-  完成后执行自动评审循环（Step 5 —— 架构评审 → ❌修复 → ✅pass arch → 自动推进到详细设计）。
-  全程自动，不询问用户。
+  加载 system-architect skill（使用 skill 工具）。
+
+  ⚠️ 不准跳过任何步骤，不准直接 gate.sh pass。必须实际完成以下工作：
+
+  1. 读取 doc/prd/ 下的 PRD 文档
+  2. 严格按 system-architect 工作流 Step 1~4 生成真实的 SAD 文档，写入 doc/arch/
+  3. 执行 Step 5 自动评审循环（task → review-expert → ❌修复 → ✅/⚠️ → gate.sh pass arch）
+  4. 评审通过后自动推进到详细设计阶段（Step D 启动 task-decomposer）
+
+  全程自动，不询问用户。实际生成文档，不得跳过。
   ```
 
 无需询问用户"是否继续"。`task` 子代理会自动完成架构→详细设计的全链路推进。
