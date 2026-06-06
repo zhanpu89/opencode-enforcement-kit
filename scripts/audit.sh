@@ -126,32 +126,64 @@ for stage in prd arch detailed; do
 
     echo "  门禁:    $gate_status"
 
-    # ---- 综合判断与建议 ----
+    # ---- 交叉校验与建议 ----
+    warnings=""
+    status="✅ 正常"
+
     if [ -f "$gate_file" ]; then
-        echo "  状态:    ✅ 无需处理"
-    elif [ "$has_review" = true ]; then
-        if echo "$conclusion" | grep -q '❌'; then
-            echo "  建议:    ❌ 评审不通过（有 P0 阻断），需修复后重评"
+        # 门禁已通过 → 交叉校验
+        if [ "$has_review" = false ]; then
+            warnings='⚠️ 门禁已通过但无评审报告（可能为伪造）'
+            status="⚠️ 异常"
             all_done=false
-        elif echo "$conclusion" | grep -q '⚠️'; then
-            echo "  建议:    ⚠️ 有条件通过，可 gate.sh pass $stage 推进"
-        elif [ -z "$conclusion" ]; then
-            echo "  建议:    ⚠️ 无法解析评审结论，请人工检查评审报告"
-        else
-            echo "  建议:    ✅ 评审通过，运行 gate.sh pass $stage"
+        elif echo "$conclusion" | grep -q '❌'; then
+            warnings='❌ 门禁已通过但评审结论为不通过'
+            status="❌ 异常"
+            all_done=false
+        elif [ "$p0_count" -gt 0 ] && echo "$conclusion" | grep -q '✅'; then
+            warnings='⚠️ 评审结论通过但存在 P0 问题（结论与内容不一致）'
+            status="⚠️ 异常"
+            all_done=false
+        elif [ "$p0_count" -gt 0 ]; then
+            warnings="⚠️ 有 $p0_count 个 P0 未修复"
+            status="⚠️ 异常"
+            all_done=false
         fi
-    elif [ "$has_docs" = true ]; then
-        echo "  建议:    文档已存在，缺评审 → 加载 review-expert 做${review_mode}评审"
     else
-        echo "  建议:    缺文档 → 加载对应 skill 生成（prd-writer/system-architect/task-decomposer）"
+        # 门禁未通过 → 常规建议
+        if [ "$has_review" = true ]; then
+            if echo "$conclusion" | grep -q '❌'; then
+                warnings="❌ 评审不通过（有 P0 阻断），需修复后重评"
+                status="❌ 阻断"
+            elif echo "$conclusion" | grep -q '⚠️'; then
+                warnings="⚠️ 有条件通过，可 gate.sh pass $stage 推进"
+                status="⚠️ 待推进"
+            elif [ -z "$conclusion" ]; then
+                warnings="⚠️ 无法解析评审结论"
+                status="⚠️ 异常"
+            else
+                warnings="✅ 评审通过，运行 gate.sh pass $stage"
+                status="✅ 待推进"
+            fi
+        elif [ "$has_docs" = true ]; then
+            warnings="缺评审 → 加载 review-expert 做${review_mode}评审"
+            status="⏳ 缺评审"
+        else
+            warnings="缺文档 → 加载对应 skill 生成"
+            status="⏳ 缺文档"
+        fi
+        all_done=false
     fi
+
+    echo "  状态:    $status"
+    [ -n "$warnings" ] && echo "  建议:    $warnings"
     echo ""
 done
 
 echo "=========================================="
 if [ "$all_done" = true ]; then
-    echo " ✅ 全链路已完成"
+    echo " ✅ 全链路审计通过"
 else
-    echo " 💡 部分阶段未完成，见上方建议"
+    echo " 💡 存在异常或未完成项，见上方建议"
 fi
 echo "=========================================="
