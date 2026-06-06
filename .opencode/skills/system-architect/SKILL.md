@@ -98,6 +98,10 @@ memory_save_summary(
 
 ## 工作流
 
+### 快速跳过检查
+
+**如果 `doc/.gate/arch.pass` 已存在** → 架构阶段已完成，跳过全部步骤，直接到 `Step D（推进到详细设计）`。
+
 ### Step 1：模式识别
 
 | 模式 | 触发条件 | 跳转 |
@@ -177,11 +181,13 @@ memory_save_summary(
 评审报告见: doc/review/xxx_架构评审报告.md
 ```
 
-#### 步骤 D：自动推进到下一阶段
+#### 步骤 D：查漏补缺，自动推进到详细设计
 
-`gate.sh pass arch` 完成后（评审 ✅ 或 ⚠️），自动推进到详细设计阶段。
+`gate.sh pass arch` 完成后，检查详细设计阶段状态。
 
-调用 `task` 工具启动子代理执行下一阶段：
+如果 `doc/.gate/detailed.pass` 已存在 → 已完成，跳过。
+
+如果不存在 → 用 `task` 启动 task-decomposer：
 
 - description: `"详细设计: {项目名}"`
 - subagent_type: `"general"`
@@ -190,13 +196,11 @@ memory_save_summary(
   ```
   加载 task-decomposer skill（使用 skill 工具）。
 
-  ⚠️ 不准跳过任何步骤，不准直接 gate.sh pass。必须实际完成以下工作：
+  ⚠️ 不准跳过。先检查 doc/detailed/ 是否有现有详设文档：
+  - 有文档 → 直接执行 Step 7 自动评审（不重新生成）
+  - 无文档 → 按工作流 Step 0~6 生成详设文档，再执行 Step 7 评审
 
-  1. 读取 doc/arch/ 下的 SAD 文档
-  2. 严格按 task-decomposer 工作流 Step 0~6 生成真实的详细设计文档，写入 doc/detailed/
-  3. 执行 Step 7 自动评审循环（task → review-expert → ❌修复 → ✅/⚠️ → gate.sh pass detailed）
-
-  全程自动，不询问用户。实际生成文档，不得跳过。
+  Step 7 通过后自动 gate.sh pass detailed。
   ```
 
 ## 核心原则

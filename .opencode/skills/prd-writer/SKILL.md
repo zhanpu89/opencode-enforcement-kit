@@ -166,11 +166,15 @@ memory_save_summary(
 评审报告见: doc/review/xxx_需求评审报告.md
 ```
 
-#### 步骤 D：自动推进到下一阶段
+#### 步骤 D：查漏补缺，自动推进后续阶段
 
-`gate.sh pass prd` 完成后（评审 ✅ 或 ⚠️），自动推进到架构设计阶段。
+`gate.sh pass prd` 完成后，检查各阶段门禁状态，只处理未完成的阶段。
 
-调用 `task` 工具启动子代理执行下一阶段：
+**1. 检查架构阶段：**
+
+如果 `doc/.gate/arch.pass` 已存在 → 架构已完成，跳过，直接进入第 2 步。
+
+如果 `doc/.gate/arch.pass` 不存在 → 用 `task` 启动 system-architect：
 
 - description: `"架构设计: {项目名}"`
 - subagent_type: `"general"`
@@ -179,17 +183,30 @@ memory_save_summary(
   ```
   加载 system-architect skill（使用 skill 工具）。
 
-  ⚠️ 不准跳过任何步骤，不准直接 gate.sh pass。必须实际完成以下工作：
+  ⚠️ 不准跳过。先检查 doc/arch/ 是否有现有 SAD 文档：
+  - 有文档 → 直接执行 Step 5 自动评审（不重新生成）
+  - 无文档 → 按工作流 Step 1~4 生成 SAD 文档，再执行 Step 5 评审
 
-  1. 读取 doc/prd/ 下的 PRD 文档
-  2. 严格按 system-architect 工作流 Step 1~4 生成真实的 SAD 文档，写入 doc/arch/
-  3. 执行 Step 5 自动评审循环（task → review-expert → ❌修复 → ✅/⚠️ → gate.sh pass arch）
-  4. 评审通过后自动推进到详细设计阶段（Step D 启动 task-decomposer）
-
-  全程自动，不询问用户。实际生成文档，不得跳过。
+  Step 5 通过后自动 gate.sh pass arch，然后执行 Step D 推进到详细设计。
   ```
 
-无需询问用户"是否继续"。`task` 子代理会自动完成架构→详细设计的全链路推进。
+**2. 检查详细设计阶段：**
+
+如果 `doc/.gate/detailed.pass` 已存在 → 详细设计已完成，跳过。
+
+如果 `doc/.gate/detailed.pass` 不存在 → 检查架构是否已完成（上一步可能已跳过）：
+
+- 架构已完成 → 用 `task` 启动 task-decomposer（prompt 同上逻辑：先查文档是否存在，有则只评审，无则生成+评审）
+- 架构未完成 → 不启动，等架构阶段完成后自然推进
+
+**3. 全部完成后输出总结：**
+
+```
+✅ 全链路完成
+   PRD: ✅
+   架构: ✅ 或 ⏳（需要人工检查）
+   详细设计: ✅ 或 ⏳
+```
 
 ## 核心原则
 

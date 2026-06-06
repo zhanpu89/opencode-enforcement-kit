@@ -88,6 +88,10 @@ memory_save_summary(
 
 ## 工作流
 
+### 快速跳过检查
+
+**如果 `doc/.gate/detailed.pass` 已存在** → 详细设计阶段已完成，跳过全部步骤，直接结束。
+
 ### Step 0：启动检测
 恢复模式（检查 `_PROGRESS.md` 有 ⏳ 条目）→ 端类型探测（SAD 概览 → PRD → 目录 → 询问用户）→ 确定执行路径
 
