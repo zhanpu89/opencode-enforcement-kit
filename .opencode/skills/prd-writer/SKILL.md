@@ -166,6 +166,26 @@ memory_save_summary(
 评审报告见: doc/review/xxx_需求评审报告.md
 ```
 
+#### 步骤 D：自动推进到下一阶段
+
+`gate.sh pass prd` 完成后（评审 ✅ 或 ⚠️），自动推进到架构设计阶段。
+
+调用 `task` 工具启动子代理执行下一阶段：
+
+- description: `"架构设计: {项目名}"`
+- subagent_type: `"general"`
+- prompt: 填入以下内容（将占位符替换为实际值）：
+
+  ```
+  加载 system-architect skill（使用 skill 工具），
+  基于 doc/prd/ 下的 PRD 文档进行架构设计，
+  写入文档到 doc/arch/ 目录，
+  完成后执行自动评审循环（Step 5 —— 架构评审 → ❌修复 → ✅pass arch → 自动推进到详细设计）。
+  全程自动，不询问用户。
+  ```
+
+无需询问用户"是否继续"。`task` 子代理会自动完成架构→详细设计的全链路推进。
+
 ## 核心原则
 
 1. **业务语言优先** — 禁止技术术语，说"做什么/为什么"

@@ -177,6 +177,24 @@ memory_save_summary(
 评审报告见: doc/review/xxx_架构评审报告.md
 ```
 
+#### 步骤 D：自动推进到下一阶段
+
+`gate.sh pass arch` 完成后（评审 ✅ 或 ⚠️），自动推进到详细设计阶段。
+
+调用 `task` 工具启动子代理执行下一阶段：
+
+- description: `"详细设计: {项目名}"`
+- subagent_type: `"general"`
+- prompt: 填入以下内容（将占位符替换为实际值）：
+
+  ```
+  加载 task-decomposer skill（使用 skill 工具），
+  基于 doc/arch/ 下的 SAD 文档进行详细设计，
+  写入文档到 doc/detailed/ 目录，
+  完成后执行自动评审循环（Step 7 —— 详设评审 → ❌修复 → ✅pass detailed）。
+  全程自动，不询问用户。
+  ```
+
 ## 核心原则
 
 1. NFR 必须量化，不得用"高性能/高可用"模糊描述
