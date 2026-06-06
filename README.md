@@ -61,7 +61,7 @@ bash setup.sh /path/to/target      # 安装到其他项目
 | 编码 | coding-executor 三阶段流程 | `scripts/gate.sh post` 自动标记 |
 | 代码评审 | code-reviewer 归零 | `scripts/gate.sh pass review` |
 
-> 文档阶段（PRD/架构/详细设计）生成后自动触发 review-expert 评审，通过后自动 `gate.sh pass`。`gate.sh unpass` 仍可随时手动阻断。
+> review-expert 为可选 skill，用于人工拉通评审。`gate.sh unpass` 可随时手动阻断。
 
 ## 防御层次
 

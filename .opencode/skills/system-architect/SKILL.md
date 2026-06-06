@@ -98,10 +98,6 @@ memory_save_summary(
 
 ## 工作流
 
-### 快速跳过检查
-
-**如果 `doc/.gate/arch.pass` 已存在** → 架构阶段已完成，跳过全部步骤，直接到 `Step D（推进到详细设计）`。
-
 ### Step 1：模式识别
 
 | 模式 | 触发条件 | 跳转 |
@@ -136,68 +132,6 @@ memory_save_summary(
 - **文档合并：** 逐节对比增量修改，禁止整文件重写
 
 `end-specific.md` 在一次 Step 4 中只需加载一次，多端时写完后跳转到下一个端对应的 `##` 节。
-
-### Step 5：自动评审（跨会话独立上下文）
-
-⚠️ **必须执行此步骤**，不要询问用户"是否继续"。文档生成后**立即**自动触发评审，阻断时**立即**自动修复。
-
-**执行流程（上限 3 轮，每轮步骤相同）：**
-
-#### 步骤 A：启动评审
-
-1. 收集本次写入的文档路径列表，存入变量 DOC_PATHS
-2. 调用 `task` 工具启动评审子代理：
-   - description: `"评审: {文档名}"`
-   - subagent_type: `"general"`
-   - prompt: 填入以下内容（将占位符替换为实际值）：
-
-     ```
-     加载 review-expert skill（使用 skill 工具），以独立评审者身份执行：
-     评审模式: 架构评审
-     DOC_PATHS: {逗号分隔的文档路径}
-     你是独立评审者，不知道文档是谁写的，请严格按 review-expert 的子代理入口流程执行。
-     ```
-
-#### 步骤 B：解析结论
-
-从 `task` 返回消息中提取最后几行的标记：
-
-- `REVIEW_CONCLUSION: ✅` 或 `⚠️` → 运行 `bash scripts/gate.sh pass arch`，整个 Step 5 完成
-- `REVIEW_CONCLUSION: ❌` → **不要询问用户，立即进入步骤 C**
-
-#### 步骤 C：自动修复（不要问用户，直接执行）
-
-1. 读取所有 `P0_BLOCKING:` 行的内容，每条是一个待修复问题
-2. 打开对应的 SAD 文档，逐条修复（每条 `P0_BLOCKING` 对应文档中一个具体缺陷）
-3. 更新文档版本号（v1.x → v1.x+1）和变更记录
-4. 修复完成后，回到**步骤 A**，用修复后的文档路径重新评审
-
-#### 超限处理
-
-连续 3 轮评审都有 ❌ → 停止循环，输出以下信息后等待人工介入：
-
-```
-⛔ 经 3 轮修复仍存在 P0 阻断项，需人工介入。
-评审报告见: doc/review/xxx_架构评审报告.md
-```
-
-#### 步骤 D：轻量审计，自动推进
-
-`gate.sh pass arch` 完成后，检查详细设计阶段状态。
-
-**轻量检查：**
-
-```bash
-ls doc/detailed/*.md 2>/dev/null
-ls doc/review/*详细设计评审报告*.md 2>/dev/null
-cat doc/.gate/detailed.pass 2>/dev/null || echo "detailed 未通过"
-```
-
-**仅在实际有工作时才启动 task：**
-
-- `doc/.gate/detailed.pass` 已存在 → 跳过
-- 有详设文档无评审 → task → review-expert（仅评审）
-- 无详设文档 → task → task-decomposer（生成 + 评审 + pass）
 
 ## 核心原则
 
