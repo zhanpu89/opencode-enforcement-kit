@@ -166,46 +166,70 @@ memory_save_summary(
 评审报告见: doc/review/xxx_需求评审报告.md
 ```
 
-#### 步骤 D：查漏补缺，自动推进后续阶段
+#### 步骤 D：轻量审计，查漏补缺
 
-`gate.sh pass prd` 完成后，检查各阶段门禁状态，只处理未完成的阶段。
+`gate.sh pass prd` 完成后，用轻量 `ls`/`cat` 审计各阶段状态。
 
-**1. 检查架构阶段：**
+**使用以下命令检查（不要加载其他 skill，不要扫描项目文件）：**
 
-如果 `doc/.gate/arch.pass` 已存在 → 架构已完成，跳过，直接进入第 2 步。
+```bash
+# 文档目录
+ls doc/prd/*.md 2>/dev/null
+ls doc/arch/*.md 2>/dev/null
+ls doc/detailed/*.md 2>/dev/null
+# 评审报告目录
+ls doc/review/*需求评审报告*.md 2>/dev/null
+ls doc/review/*架构评审报告*.md 2>/dev/null
+ls doc/review/*详细设计评审报告*.md 2>/dev/null
+# 门禁状态
+cat doc/.gate/prd.pass 2>/dev/null || echo "prd 未通过"
+cat doc/.gate/arch.pass 2>/dev/null || echo "arch 未通过"
+cat doc/.gate/detailed.pass 2>/dev/null || echo "detailed 未通过"
+```
 
-如果 `doc/.gate/arch.pass` 不存在 → 用 `task` 启动 system-architect：
+**根据审计结果，逐阶段处理未完成的部分：**
 
-- description: `"架构设计: {项目名}"`
-- subagent_type: `"general"`
-- prompt: 填入以下内容（将占位符替换为实际值）：
+| 阶段 | 有文档 | 有评审报告 | 门禁已通过 | 动作 |
+|------|--------|-----------|-----------|------|
+| 架构 | `ls doc/arch/*.md` | `ls doc/review/*架构评审报告*.md` | `doc/.gate/arch.pass` | 有缺则启动 task |
+| 详细设计 | `ls doc/detailed/*.md` | `ls doc/review/*详细设计评审报告*.md` | `doc/.gate/detailed.pass` | 有缺则启动 task |
 
-  ```
-  加载 system-architect skill（使用 skill 工具）。
+**启动 task 的规则（仅在实际有工作时才启动）：**
 
-  ⚠️ 不准跳过。先检查 doc/arch/ 是否有现有 SAD 文档：
-  - 有文档 → 直接执行 Step 5 自动评审（不重新生成）
-  - 无文档 → 按工作流 Step 1~4 生成 SAD 文档，再执行 Step 5 评审
+- 架构缺文档 → task → system-architect（生成 SAD + 评审 + pass）
+- 架构有文档无评审 → task → review-expert（仅评审架构文档）
+- 架构已通过 → 完全跳过，不启动任何 task
+- 详细设计同理
 
-  Step 5 通过后自动 gate.sh pass arch，然后执行 Step D 推进到详细设计。
-  ```
-
-**2. 检查详细设计阶段：**
-
-如果 `doc/.gate/detailed.pass` 已存在 → 详细设计已完成，跳过。
-
-如果 `doc/.gate/detailed.pass` 不存在 → 检查架构是否已完成（上一步可能已跳过）：
-
-- 架构已完成 → 用 `task` 启动 task-decomposer（prompt 同上逻辑：先查文档是否存在，有则只评审，无则生成+评审）
-- 架构未完成 → 不启动，等架构阶段完成后自然推进
-
-**3. 全部完成后输出总结：**
+**task prompt 模板（架构示例，详细设计同理替换）：**
 
 ```
-✅ 全链路完成
-   PRD: ✅
-   架构: ✅ 或 ⏳（需要人工检查）
-   详细设计: ✅ 或 ⏳
+description: "架构: {项目名}"
+subagent_type: "general"
+prompt: >
+  加载 system-architect skill。
+  doc/arch/ 缺 SAD 文档，请按工作流生成并写入，然后执行 Step 5 评审循环。
+  完成后自动 gate.sh pass arch，然后执行 Step D 推进到详细设计。
+```
+
+或（仅缺评审）：
+
+```
+description: "评审架构: {项目名}"
+subagent_type: "general"
+prompt: >
+  加载 review-expert skill。
+  评审模式: 架构评审
+  DOC_PATHS: doc/arch/ 下的 SAD 文档路径
+```
+
+**完成后输出总结：**
+
+```
+✅ 全链路审计完成
+   PRD: ✅ 通过
+   架构: ✅/⏳/❌ + 处理结果
+   详细设计: ✅/⏳/❌ + 处理结果
 ```
 
 ## 核心原则

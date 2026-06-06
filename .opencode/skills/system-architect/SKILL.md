@@ -181,27 +181,23 @@ memory_save_summary(
 评审报告见: doc/review/xxx_架构评审报告.md
 ```
 
-#### 步骤 D：查漏补缺，自动推进到详细设计
+#### 步骤 D：轻量审计，自动推进
 
 `gate.sh pass arch` 完成后，检查详细设计阶段状态。
 
-如果 `doc/.gate/detailed.pass` 已存在 → 已完成，跳过。
+**轻量检查：**
 
-如果不存在 → 用 `task` 启动 task-decomposer：
+```bash
+ls doc/detailed/*.md 2>/dev/null
+ls doc/review/*详细设计评审报告*.md 2>/dev/null
+cat doc/.gate/detailed.pass 2>/dev/null || echo "detailed 未通过"
+```
 
-- description: `"详细设计: {项目名}"`
-- subagent_type: `"general"`
-- prompt: 填入以下内容（将占位符替换为实际值）：
+**仅在实际有工作时才启动 task：**
 
-  ```
-  加载 task-decomposer skill（使用 skill 工具）。
-
-  ⚠️ 不准跳过。先检查 doc/detailed/ 是否有现有详设文档：
-  - 有文档 → 直接执行 Step 7 自动评审（不重新生成）
-  - 无文档 → 按工作流 Step 0~6 生成详设文档，再执行 Step 7 评审
-
-  Step 7 通过后自动 gate.sh pass detailed。
-  ```
+- `doc/.gate/detailed.pass` 已存在 → 跳过
+- 有详设文档无评审 → task → review-expert（仅评审）
+- 无详设文档 → task → task-decomposer（生成 + 评审 + pass）
 
 ## 核心原则
 
