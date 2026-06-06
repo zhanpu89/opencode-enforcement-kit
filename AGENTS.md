@@ -45,7 +45,23 @@ Stages: `prd`, `arch`, `detailed`, `code`, `review`
 
 PRD → Architecture → Detailed Design → Coding → Code Review
 
-Each stage requires `review-expert` to pass before the next stage is unblocked. `gate.sh pass/unpass` manages the transitions.
+## Automated Doc Review Loop
+
+Each writing skill (prd-writer, system-architect, task-decomposer) automatically triggers an **independent review** after generating documents:
+
+```
+写文档 skill 完成
+  │
+  └─ task 启动 review-expert（全新上下文，陌生人视角）
+       │
+       ├─ ✅/⚠️ → gate.sh pass {stage} → 完成
+       │
+       └─ ❌ (P0 阻断) → 修复文档 → 重评（上限 3 轮）
+            │
+            └─ 超限 → 人工介入
+```
+
+The review runs in a **separate subagent context** — the reviewer does not know who wrote the document, eliminating self-review bias. `gate.sh unpass` can still manually block any stage.
 
 ## Design Docs
 
