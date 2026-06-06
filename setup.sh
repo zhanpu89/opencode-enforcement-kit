@@ -36,9 +36,12 @@ safe_cp "$KIT_DIR/scripts/doc-gate.sh" "$TARGET/scripts/doc-gate.sh"
 chmod +x "$TARGET/scripts/doc-gate.sh"
 safe_cp "$KIT_DIR/scripts/verify-coding.sh" "$TARGET/scripts/verify-coding.sh"
 chmod +x "$TARGET/scripts/verify-coding.sh"
+safe_cp "$KIT_DIR/scripts/audit.sh" "$TARGET/scripts/audit.sh"
+chmod +x "$TARGET/scripts/audit.sh"
 echo "  ✅ scripts/gate.sh（统一入口）"
 echo "  ✅ scripts/doc-gate.sh"
 echo "  ✅ scripts/verify-coding.sh"
+echo "  ✅ scripts/audit.sh"
 
 # ---- 2. coding-executor agent ----
 echo "[2/7] 复制 coding-executor agent..."

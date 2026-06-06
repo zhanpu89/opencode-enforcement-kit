@@ -8,6 +8,7 @@
 #   bash gate.sh unpass <stage> [原因]  撤销通过标记
 #   bash gate.sh pass <stage>           标记阶段完成
 #   bash gate.sh status                 查看全阶段状态
+#   bash gate.sh audit                  轻量审计全链路
 #   bash gate.sh pre <模块> [文档...]   编码前验证
 #   bash gate.sh post <模块> <报告>     编码后验证
 #   bash gate.sh clean <模块>           清除验证记录
@@ -26,6 +27,7 @@ usage() {
   pass <stage>           标记阶段完成
   status                 查看全阶段状态
   diagnose               诊断当前状态和下一步建议
+  audit                  轻量审计全链路（文档/评审/门禁）
 
 编码命令（coding-executor 内部使用）:
   pre <模块> [文档...]    编码前验证
@@ -46,6 +48,9 @@ case "$CMD" in
     check|unpass|pass|status|diagnose)
         source "$SCRIPT_DIR/doc-gate.sh"
         ("do_${CMD}" "$@")
+        ;;
+    audit)
+        bash "$SCRIPT_DIR/audit.sh"
         ;;
     pre|post|clean)
         source "$SCRIPT_DIR/verify-coding.sh"
