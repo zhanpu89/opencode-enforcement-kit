@@ -41,9 +41,9 @@ analyze_report() {
         conclusion="❌ 不通过"
     fi
 
-    # 统计 P0/P1 问题数
-    p0_count=$(grep -c 'P0' "$report_file" 2>/dev/null || true)
-    p1_count=$(grep -c 'P1' "$report_file" 2>/dev/null || true)
+    # 统计 P0/P1 问题数（只算实际问题条目 [P0-xxx]，不算表头/零计数/描述）
+    p0_count=$(grep -c '\[P0-' "$report_file" 2>/dev/null || true)
+    p1_count=$(grep -c '\[P1-' "$report_file" 2>/dev/null || true)
 
     # 取最新一轮的结论（多轮评审取最后一轮）
     local round_info=""
