@@ -169,24 +169,26 @@ fi
 # ---- 8. .gitignore ----
 echo "[8/8] 处理 .gitignore..."
 TARGET_GITIGNORE="$TARGET/.gitignore"
-GITIGNORE_ENTRIES=(
-  ""
-  "# opencode-enforcement-kit state files"
-  ".verify/"
-  "doc/.gate/"
-)
+append_gitignore_entry() {
+    local entry="$1"
+    if ! grep -qF "$entry" "$TARGET_GITIGNORE" 2>/dev/null; then
+        echo "$entry" >> "$TARGET_GITIGNORE"
+    fi
+}
+
 if [ -f "$TARGET_GITIGNORE" ]; then
-    for entry in "${GITIGNORE_ENTRIES[@]}"; do
-        if [ -z "$entry" ]; then
-            continue
-        fi
-        if ! grep -qF "$entry" "$TARGET_GITIGNORE" 2>/dev/null; then
-            echo "$entry" >> "$TARGET_GITIGNORE"
-        fi
-    done
+    append_gitignore_entry ""
+    append_gitignore_entry "# opencode-enforcement-kit state files"
+    append_gitignore_entry ".verify/"
+    append_gitignore_entry "doc/.gate/"
     echo "  ✅ .gitignore 已追加"
 else
-    printf '%s\n' "${GITIGNORE_ENTRIES[@]}" > "$TARGET_GITIGNORE"
+    {
+        echo ""
+        echo "# opencode-enforcement-kit state files"
+        echo ".verify/"
+        echo "doc/.gate/"
+    } > "$TARGET_GITIGNORE"
     echo "  ✅ .gitignore 已创建"
 fi
 
