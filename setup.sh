@@ -58,7 +58,7 @@ echo "  ✅ .opencode/plugin/stage-gate.js"
 echo "  ✅ .opencode/plugin/verify-gate.js"
 
 # ---- 4. skills ----
-echo "[4/8] 复制 skills...（prd-writer / system-architect / task-decomposer / code-reviewer / review-expert）"
+echo "[4/8] 复制 skills...（prd-writer / system-architect / task-decomposer / code-reviewer / review-expert / audit-system）"
 if [ -d "$KIT_DIR/.opencode/skills" ]; then
     mkdir -p "$TARGET/.opencode/skills"
     cp -r "$KIT_DIR/.opencode/skills/"* "$TARGET/.opencode/skills/"
