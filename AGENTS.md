@@ -61,7 +61,7 @@ Each writing skill (prd-writer, system-architect, task-decomposer) automatically
             └─ 超限 → 人工介入
 ```
 
-The review runs in a **separate subagent context** — the reviewer does not know who wrote the document, eliminating self-review bias. `gate.sh unpass` can still manually block any stage.
+The review runs in a **separate subagent context** — the reviewer does not know who wrote the document, eliminating self-review bias. The reviewer skips Step 0 (mode recognition) and directly uses the specified REVIEW_MODE, never entering "full pipeline" mode. `gate.sh unpass` can still manually block any stage.
 
 ## Design Docs
 
