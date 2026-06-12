@@ -39,23 +39,30 @@ module.exports = async ({ directory }) => {
       if (!isEditTool(tool)) return;
 
       const verifyDir = join(projectRoot, ".verify");
-      const hasPreCheck =
-        existsSync(verifyDir) &&
-        readdirSync(verifyDir).some(
-          (f) => f.endsWith(".ini") && !f.includes(".post.")
-        );
+      let hasPreCheck = false;
+      try {
+        hasPreCheck =
+          existsSync(verifyDir) &&
+          readdirSync(verifyDir).some(
+            (f) => f.endsWith(".ini") && !f.includes(".post.")
+          );
+      } catch (e) {
+        // .verify/ 不可读时放行（避免插件崩溃），由 gate.sh pre 重新创建
+      }
 
       if (hasPreCheck) return;
 
       const blockMsg = [
         "⛔ 编码阻断：未检测到验证记录",
         "",
-        "编辑代码前必须完成编码前验证：",
+        "编辑代码前必须先委托 coding-executor 完成三阶段流程：",
         "",
-        "  bash scripts/gate.sh pre <模块名> <相关文档路径>",
+        "  1. 加载记忆 → memory_init_session()",
+        "  2. 编码前验证 → bash scripts/gate.sh pre <模块名> <相关文档路径>",
+        "  3. 验证通过后即可正常编辑",
         "",
-        "验证通过后 .verify/ 目录会生成验证记录，",
-        "届时即可正常编辑代码文件。",
+        "委托 coding-executor 后，它会自动处理以上步骤。",
+        "（零号铁律：禁止直接编辑，必须走 coding-executor）",
         "",
       ].join("\n");
 

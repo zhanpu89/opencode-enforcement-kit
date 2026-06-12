@@ -22,17 +22,21 @@ bash scripts/gate.sh post user 'biz=ok...'         # 编码后验证
 ├── setup.sh                        # 安装/更新脚本
 ├── AGENTS.md                       # 本仓库说明（AI 开发时读取）
 ├── opencode.json                   # 门禁配置
-├── coding-rules.md                 # AI 编码铁律
 ├── scripts/
 │   ├── gate.sh                     # 统一门禁 CLI（推荐入口）
 │   ├── doc-gate.sh                 # 文档阶段门禁
 │   └── verify-coding.sh            # 编码验证门禁
 ├── .opencode/
 │   ├── agent/
-│   │   └── coding-executor.md      # 编码执行 agent
+│   │   ├── coding-executor.md      # 编码执行 agent
+│   │   └── verify-agent.md         # 独立编码验证 agent
 │   ├── plugin/
 │   │   ├── stage-gate.js           # 阶段门禁插件
 │   │   └── verify-gate.js          # 编码验证插件
+│   ├── rules/
+│   │   ├── coding-rules.md         # AI 编码铁律
+│   │   ├── endpoint-lock.md        # 端锁定规则
+│   │   └── precise-location.md     # 精准定位规则
 │   └── skills/                     # 开发流程技能
 │       ├── prd-writer/             # 需求分析
 │       ├── system-architect/       # 架构设计
@@ -67,7 +71,7 @@ bash setup.sh /path/to/target      # 安装到其他项目
 
 | 层 | 机制 | 作用 |
 |----|------|------|
-| Agent 指令 | coding-executor.md + coding-rules.md | 三阶段流程 + 零号铁律 |
+| Agent 指令 | coding-executor.md + verify-agent.md + .opencode/rules/ | 三阶段流程 + 独立验证 + 编码铁律 |
 | 文档门禁 | `gate.sh check/pass/unpass` | 按阶段推进 + 人工阻断 |
 | 阶段门禁 Plugin | `stage-gate.js` | 无 detailed.pass 阻断代码编辑 |
 | 编码门禁 Plugin | `verify-gate.js` | 无 .verify 记录阻断编辑 |

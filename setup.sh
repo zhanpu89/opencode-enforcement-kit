@@ -36,18 +36,17 @@ safe_cp "$KIT_DIR/scripts/doc-gate.sh" "$TARGET/scripts/doc-gate.sh"
 chmod +x "$TARGET/scripts/doc-gate.sh"
 safe_cp "$KIT_DIR/scripts/verify-coding.sh" "$TARGET/scripts/verify-coding.sh"
 chmod +x "$TARGET/scripts/verify-coding.sh"
-safe_cp "$KIT_DIR/scripts/audit.sh" "$TARGET/scripts/audit.sh"
-chmod +x "$TARGET/scripts/audit.sh"
 echo "  ✅ scripts/gate.sh（统一入口）"
 echo "  ✅ scripts/doc-gate.sh"
 echo "  ✅ scripts/verify-coding.sh"
-echo "  ✅ scripts/audit.sh"
 
-# ---- 2. coding-executor agent ----
-echo "[2/7] 复制 coding-executor agent..."
+# ---- 2. agents ----
+echo "[2/7] 复制 agents...（coding-executor + verify-agent）"
 mkdir -p "$TARGET/.opencode/agent"
 safe_cp "$KIT_DIR/.opencode/agent/coding-executor.md" "$TARGET/.opencode/agent/coding-executor.md"
+safe_cp "$KIT_DIR/.opencode/agent/verify-agent.md" "$TARGET/.opencode/agent/verify-agent.md"
 echo "  ✅ .opencode/agent/coding-executor.md"
+echo "  ✅ .opencode/agent/verify-agent.md"
 
 # ---- 3. plugins ----
 echo "[3/7] 复制 plugins...（stage-gate.js + verify-gate.js）"
@@ -58,119 +57,98 @@ echo "  ✅ .opencode/plugin/stage-gate.js"
 echo "  ✅ .opencode/plugin/verify-gate.js"
 
 # ---- 4. skills ----
-echo "[4/8] 复制 skills...（prd-writer / system-architect / task-decomposer / code-reviewer / review-expert / audit-system）"
+echo "[4/7] 复制 skills...（prd-writer / system-architect / task-decomposer / code-reviewer / review-expert / audit-system）"
 if [ -d "$KIT_DIR/.opencode/skills" ]; then
     mkdir -p "$TARGET/.opencode/skills"
     cp -r "$KIT_DIR/.opencode/skills/"* "$TARGET/.opencode/skills/"
     echo "  ✅ .opencode/skills/"
 fi
 
-# ---- 5. coding-rules ----
-echo "[5/8] 复制 coding-rules.md..."
-safe_cp "$KIT_DIR/coding-rules.md" "$TARGET/coding-rules.md"
-echo "  ✅ coding-rules.md"
-
-# ---- 6. CLAUDE.md（幂等合并） ----
-echo "[6/8] 处理 CLAUDE.md..."
-
-ENFORCE_HEADER=$(cat <<'HEADER'
-# CLAUDE.md
-
-## 🔒 编码强制规则（禁止以任何理由跳过）
-
-任何文件修改（包括改端口号、改配置、修文案、增删代码）必须先委托 `coding-executor` agent 执行，不得直接使用 edit/write 工具。
-允许直接编辑的理由个数 = **0**。没有例外，没有" trivial "。
-
-系统已配置权限：直接编辑会弹出确认提示。看到弹窗 = 你正在违规，立即停止。
-具体编码流程见 `coding-rules.md`，已注入系统提示。
-
----
-HEADER
-)
-
-if [ -f "$TARGET/CLAUDE.md" ]; then
-    if head -5 "$TARGET/CLAUDE.md" 2>/dev/null | grep -qF '编码强制规则'; then
-        echo "  ⏭️  已包含编码强制规则，跳过"
-    else
-        cp "$TARGET/CLAUDE.md" "$TARGET/CLAUDE.md.bak"
-        echo "$ENFORCE_HEADER" > "$TARGET/CLAUDE.md"
-        cat "$TARGET/CLAUDE.md.bak" >> "$TARGET/CLAUDE.md"
-        echo "  ✅ 已合并（原文件备份为 CLAUDE.md.bak）"
-    fi
-else
-    echo "$ENFORCE_HEADER" > "$TARGET/CLAUDE.md"
-    echo "  ✅ 已创建"
+# ---- 5. .opencode/rules 规则文件 ----
+echo "[5/7] 复制 rules...（coding-rules.md + endpoint-lock.md + precise-location.md）"
+if [ -d "$KIT_DIR/.opencode/rules" ]; then
+    mkdir -p "$TARGET/.opencode/rules"
+    safe_cp "$KIT_DIR/.opencode/rules/coding-rules.md" "$TARGET/.opencode/rules/coding-rules.md"
+    safe_cp "$KIT_DIR/.opencode/rules/endpoint-lock.md" "$TARGET/.opencode/rules/endpoint-lock.md"
+    safe_cp "$KIT_DIR/.opencode/rules/precise-location.md" "$TARGET/.opencode/rules/precise-location.md"
+    echo "  ✅ .opencode/rules/coding-rules.md"
+    echo "  ✅ .opencode/rules/endpoint-lock.md"
+    echo "  ✅ .opencode/rules/precise-location.md"
 fi
 
-# ---- 7. opencode.json（幂等合并） ----
-echo "[7/8] 处理 opencode.json..."
+# ---- 6. opencode.json（幂等合并） ----
+echo "[6/7] 处理 opencode.json..."
 
 if [ -f "$TARGET/opencode.json" ]; then
-    node -e "
-const fs = require('fs');
-const targetPath = '$TARGET/opencode.json';
-const kitPath = '$KIT_DIR/opencode.json';
+    TARGET="$TARGET" KIT_DIR="$KIT_DIR" node -e '
+const fs = require("fs");
+const targetPath = process.env.TARGET + "/opencode.json";
+const kitPath = process.env.KIT_DIR + "/opencode.json";
 
 let target, kit;
 try {
-    target = JSON.parse(fs.readFileSync(targetPath, 'utf-8'));
-    kit = JSON.parse(fs.readFileSync(kitPath, 'utf-8'));
+    target = JSON.parse(fs.readFileSync(targetPath, "utf-8"));
+    kit = JSON.parse(fs.readFileSync(kitPath, "utf-8"));
 } catch (e) {
-    console.error('  ❌ JSON 解析失败:', e.message);
+    console.error("  ❌ JSON 解析失败:", e.message);
     process.exit(1);
 }
 
-// 合并 instructions —— 添加 coding-rules.md
+// 合并 instructions —— 添加 .opencode/rules/ 全局匹配
 if (!Array.isArray(target.instructions)) {
     target.instructions = [];
 }
-if (!target.instructions.includes('coding-rules.md')) {
-    target.instructions.unshift('coding-rules.md');
+if (!target.instructions.includes(".opencode/rules/*.md")) {
+    target.instructions.unshift(".opencode/rules/*.md");
 }
 
-// 合并 agent —— coding-executor 以 kit 为准
-if (typeof target.agent !== 'object' || target.agent === null) {
+// 合并 agent —— 以 kit 为准
+if (typeof target.agent !== "object" || target.agent === null) {
     target.agent = {};
 }
-target.agent['coding-executor'] = JSON.parse(JSON.stringify(kit.agent['coding-executor']));
+for (const name of ["coding-executor", "verify-agent"]) {
+    if (kit.agent[name]) {
+        target.agent[name] = JSON.parse(JSON.stringify(kit.agent[name]));
+    }
+}
 
 // 合并 permission —— 补充门禁必需项，保留用户已有配置
-if (typeof target.permission !== 'object' || target.permission === null) {
+if (typeof target.permission !== "object" || target.permission === null) {
     target.permission = {};
 }
-target.permission.edit = 'ask';
-if (typeof target.permission.bash !== 'object' || target.permission.bash === null) {
+target.permission.edit = "ask";
+if (typeof target.permission.bash !== "object" || target.permission.bash === null) {
     target.permission.bash = {};
 }
-target.permission.bash['scripts/gate.sh *'] = 'allow';
-target.permission.bash['scripts/verify-coding.sh *'] = 'allow';
-target.permission.bash['scripts/doc-gate.sh *'] = 'allow';
-if (!target.permission.bash['*']) {
-    target.permission.bash['*'] = 'ask';
+target.permission.bash["scripts/gate.sh *"] = "allow";
+target.permission.bash["scripts/verify-coding.sh *"] = "allow";
+target.permission.bash["scripts/doc-gate.sh *"] = "allow";
+if (!target.permission.bash["*"]) {
+    target.permission.bash["*"] = "ask";
 }
 
 // 合并 plugin —— stage-gate + verify-gate
 if (!Array.isArray(target.plugin)) {
     target.plugin = [];
 }
-if (!target.plugin.includes('.opencode/plugin/stage-gate.js')) {
-    target.plugin.push('.opencode/plugin/stage-gate.js');
-}
-if (!target.plugin.includes('.opencode/plugin/verify-gate.js')) {
-    target.plugin.push('.opencode/plugin/verify-gate.js');
+const addPlugins = [".opencode/plugin/stage-gate.js", ".opencode/plugin/verify-gate.js"];
+for (const p of addPlugins) {
+    if (!target.plugin.includes(p)) {
+        target.plugin.push(p);
+    }
 }
 
-fs.writeFileSync(targetPath, JSON.stringify(target, null, 2) + '\n');
-console.log('  ✅ opencode.json 已合并');
-"
+fs.writeFileSync(targetPath, JSON.stringify(target, null, 2) + "\n");
+console.log("  ✅ opencode.json 已合并");
+'
 else
     cp "$KIT_DIR/opencode.json" "$TARGET/opencode.json"
     echo "  ✅ opencode.json 已创建"
 fi
 
 
-# ---- 8. .gitignore ----
-echo "[8/8] 处理 .gitignore..."
+# ---- 7. .gitignore ----
+echo "[7/7] 处理 .gitignore..."
 TARGET_GITIGNORE="$TARGET/.gitignore"
 append_gitignore_entry() {
     local entry="$1"

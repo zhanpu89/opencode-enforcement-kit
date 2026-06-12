@@ -37,12 +37,25 @@ bash scripts/gate.sh pre <模块名> <相关文档路径>
 
 ### 阶段三：后置验证 + 保存记忆
 
-**子步骤 5：五维核对 + 编码后验证**
-运行：
-```bash
-bash scripts/gate.sh post <模块名> 'biz=ok urls=ok params=ok entity=ok no-drift=yes'
+**子步骤 5：委托 verify-agent 独立审查**
+将模块名和设计文档路径传给 `verify-agent` subagent，由它独立完成五维核对。
+
+verify-agent 的工作方式：
 ```
-不通过就修复重跑。
+1. 自己读取 doc/detailed/ 下的设计文档
+   → 提取业务规则、API 契约、实体定义、DDL
+2. 自己定位并读取源代码
+   → 不需你告诉它写了什么
+3. 逐项核对（独立会话，无法看到你的声称）
+4. 输出真实报告 → bash scripts/gate.sh post <模块> '<报告>' --fix
+5. 返回核对结果给你
+```
+
+根据 verify-agent 的返回：
+```
+└─ 全部通过 → 继续下一步
+└─ 有差异   → 修复具体问题 → 重新委托 verify-agent 审查
+```
 
 **子步骤 6：保存本次编码记忆**
 如果验证通过，调 `memory_save_summary(...)` 记录本次完成的工作：
@@ -61,7 +74,7 @@ bash scripts/gate.sh post <模块名> 'biz=ok urls=ok params=ok entity=ok no-dri
 ```
 1. 输出 "✅ 编码完成，进入代码评审阶段"
 2. 不询问用户，直接触发 code-reviewer skill 审查代码
-   └─ 发现问题 → coding-executor 修复 → 重新 code-reviewer
+   └─ 发现问题 → coding-executor 修复（走 Review Fix Mode）→ 重新 code-reviewer
    └─ 归零后 → bash scripts/gate.sh pass review
 ```
 
@@ -77,9 +90,61 @@ bash scripts/gate.sh post <模块名> 'biz=ok urls=ok params=ok entity=ok no-dri
 
 ---
 
+### Review Fix Mode（代码评审修复模式）
+
+当 code-reviewer 发现问题时，你被召回修复。此时设计文档未变，无需重复完整三阶段流程。
+
+| 阶段 | 完整模式 | Review Fix Mode |
+|------|----------|-----------------|
+| 一 | 加载记忆 + 编码前验证 | 加载记忆 → 直接进入第2步，**跳过** `gate.sh pre` |
+| 二 | 读设计文档 + 编码 | **跳过**重读文档，只看 code-reviewer 的修复建议 → 直接修代码 |
+| 三 | 后置验证 + 保存记忆 | 执行五维核对 + `gate.sh post` → 保存记忆 |
+
+**Review Fix Mode 流程：**
+
+```
+1. 调 memory_init_session() + memory_search_summaries()
+   → 查看上下文，确认是评审修复任务
+2. 阅读 code-reviewer 输出的问题清单
+   → 定位：哪些文件、什么错误、期望结果
+3. 按问题清单逐一修复代码
+4. 委托 verify-agent 独立审查（同子步骤 5）
+5. 调 memory_save_summary() 记录修复内容
+6. 通知 code-reviewer 重新审查
+```
+
+**触发条件**：仅在 code-reviewer 发现问题后跳转回来时使用。首次编码必须走完整三阶段流程。
+
+---
+
+## 编码行为
+
+### Simplicity First
+
+**最少代码解决问题。不多写一行。**
+
+- 不写需求之外的功能
+- 不为单次使用场景做抽象
+- 不写"将来可能用到"的灵活性
+- 不为不可能发生的场景做错误处理
+- 200 行能缩成 50 行就重写
+
+### Surgical Changes
+
+**只动必须动的代码。不顺手改无关逻辑。**
+
+- 不"顺手优化"旁边的代码、注释或格式
+- 不重构没坏的东西
+- 保持现有风格，即使你换种写法更顺手
+- 你的修改产生了孤儿引用 → 清理你引入的未使用引用
+- 不要清理已有的废弃代码（除非用户要求）
+
+---
+
 ## 铁律
 
 - 从不跳过验证步骤。跳过验证 = 你不是编码执行者。
-- 无论修改多小（包括但不限于改端口号、改配置项、修文案），都**必须走完整三阶段流程**。
+- 首次编码必须走完整三阶段流程。评审修复可走 Review Fix Mode 跳过阶段一和阶段二。
+- 无论修改多小（包括但不限于改端口号、改配置项、修文案），都**必须走三阶段流程（或 Review Fix Mode）**。
 - 从不在没有文档的情况下写代码。没有文档 = 回去问。
 - 遇到端与端不一致，先查文档，文档没有定义就报告用户，从不擅自决定。

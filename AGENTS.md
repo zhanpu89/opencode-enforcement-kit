@@ -32,7 +32,9 @@ Stages: `prd`, `arch`, `detailed`, `code`, `review`
 - **`.opencode/plugin/stage-gate.js`** — Blocks code editing until `doc/.gate/detailed.pass` exists
 - **`.opencode/plugin/verify-gate.js`** — Blocks editing until `.verify/` has a pre-check record
 - **`.opencode/agent/coding-executor.md`** — The only agent authorized to modify files; enforces a 3-stage flow (load context → read docs & code → verify & save memory)
+- **`.opencode/agent/verify-agent.md`** — Independent verification subagent; reads docs & code in a separate session and outputs an objective 5-dimension alignment report
 - **`opencode.json`** — Configures permissions: `edit: ask`, bash scripts auto-allowed
+- **`.opencode/rules/`** — 3 coding discipline rules (`coding-rules.md` — iron law & 3-stage flow; `endpoint-lock.md` — endpoint alignment; `precise-location.md` — surgical file location before scanning)
 - **`.opencode/skills/`** — 5 development skills (prd-writer, system-architect, task-decomposer, code-reviewer, review-expert) with templates and checklists
 
 ## Three-Stage Coding Flow (coding-executor)

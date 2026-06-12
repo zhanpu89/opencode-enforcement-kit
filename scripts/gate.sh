@@ -45,12 +45,9 @@ shift
 
 # 在子 shell 中执行，防止旧脚本的 exit 退出当前 shell
 case "$CMD" in
-    check|unpass|pass|status|diagnose)
+    check|unpass|pass|status|diagnose|audit)
         source "$SCRIPT_DIR/doc-gate.sh"
         ("do_${CMD}" "$@")
-        ;;
-    audit)
-        bash "$SCRIPT_DIR/audit.sh"
         ;;
     pre|post|clean)
         source "$SCRIPT_DIR/verify-coding.sh"

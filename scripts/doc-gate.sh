@@ -7,6 +7,7 @@
 #   bash doc-gate.sh unpass <stage>    撤销通过标记（评审未通过时）
 #   bash doc-gate.sh pass <stage>      标记阶段完成
 #   bash doc-gate.sh status            查看全阶段状态
+#   bash doc-gate.sh audit             全链路审计
 # ============================================================
 set -e
 
@@ -344,6 +345,176 @@ do_diagnose() {
     fi
 }
 
+# ---- 审计辅助函数 ----
+analyze_report() {
+    local report_file="$1"
+    [ ! -f "$report_file" ] && return
+
+    local conclusion=""
+    local p0_count=0
+    local p1_count=0
+
+    if grep -q '✅' "$report_file"; then
+        conclusion="✅ 通过"
+    elif grep -q '⚠️' "$report_file" || grep -q '有条件通过' "$report_file"; then
+        conclusion="⚠️ 有条件通过"
+    elif grep -q '❌' "$report_file" || grep -q '不通过' "$report_file"; then
+        conclusion="❌ 不通过"
+    fi
+
+    p0_count=$(grep -c '\[P0-' "$report_file" 2>/dev/null || true)
+    p1_count=$(grep -c '\[P1-' "$report_file" 2>/dev/null || true)
+
+    local round_info=""
+    local round_count=$(grep -c '轮' "$report_file" 2>/dev/null || true)
+    [ "$round_count" -gt 0 ] && round_info="（第${round_count}轮）" || round_info="（单轮）"
+
+    echo "$conclusion|$p0_count|$p1_count|$round_info"
+}
+
+# ---- audit ----
+do_audit() {
+    local stage
+    local doc_dir
+    local review_key
+    local review_mode
+    local gate_file
+    local block_file
+
+    REVIEW_DIR="$DOC_DIR/review"
+
+    echo "=========================================="
+    echo " 📋 管道审计报告"
+    echo "=========================================="
+    echo ""
+
+    local all_done=true
+
+    for stage in prd arch detailed; do
+        doc_dir="${STAGE_DOC[$stage]}"
+        review_key="${STAGE_REVIEW_KEY[$stage]}"
+        review_mode="${STAGE_REVIEW_MODE[$stage]}"
+        gate_file="$GATE_DIR/${stage}.pass"
+        block_file="$GATE_DIR/${stage}.blocked"
+
+        # ---- 文档 ----
+        doc_count=$(ls -1 "$doc_dir/"*.md 2>/dev/null | wc -l)
+        has_docs=false
+        [ "$doc_count" -gt 0 ] && has_docs=true
+
+        # ---- 评审报告（取最新一份做深度分析） ----
+        latest_report=""
+        has_review=false
+        conclusion=""
+        p0_count=0
+        p1_count=0
+        round_info=""
+
+        latest_report=$(ls -1t "$REVIEW_DIR/"*"$review_key"*.md 2>/dev/null | head -1)
+        [ -n "$latest_report" ] && has_review=true
+
+        if [ "$has_review" = true ]; then
+            local report_data
+            report_data=$(analyze_report "$latest_report")
+            conclusion=$(echo "$report_data" | cut -d'|' -f1)
+            p0_count=$(echo "$report_data" | cut -d'|' -f2)
+            p1_count=$(echo "$report_data" | cut -d'|' -f3)
+            round_info=$(echo "$report_data" | cut -d'|' -f4)
+        fi
+
+        # ---- 多轮报告检测 ----
+        multi_round=false
+        report_count=$(ls -1 "$REVIEW_DIR/"*"$review_key"*.md 2>/dev/null | wc -l)
+        [ "$report_count" -gt 1 ] && multi_round=true
+
+        # ---- 门禁 ----
+        gate_status="⏳ 未完成"
+        if [ -f "$gate_file" ]; then
+            gate_status="✅ 已通过 ($(cat "$gate_file"))"
+        elif [ -f "$block_file" ]; then
+            gate_status="🔴 被阻断 ($(cat "$block_file"))"
+            all_done=false
+        else
+            all_done=false
+        fi
+
+        # ---- 输出 ----
+        echo "[$stage]"
+        echo "  文档:    $([ "$has_docs" = true ] && echo "✅ $doc_count 个" || echo "⏳ 无")"
+        echo "  评审:    $([ "$has_review" = true ] && echo "✅ $report_count 份" || echo "⏳ 无")"
+
+        if [ "$has_review" = true ]; then
+            echo "  结论:    $conclusion $round_info"
+            echo "  P0:      $p0_count 个"
+            echo "  P1:      $p1_count 个"
+        fi
+        if [ "$multi_round" = true ]; then
+            echo "  多轮:    ✅ 存在多轮评审报告"
+        fi
+
+        echo "  门禁:    $gate_status"
+
+        # ---- 交叉校验与建议 ----
+        warnings=""
+        status="✅ 正常"
+
+        if [ -f "$gate_file" ]; then
+            if [ "$has_review" = false ]; then
+                warnings='⚠️ 门禁已通过但无评审报告（可能为伪造）'
+                status="⚠️ 异常"
+                all_done=false
+            elif echo "$conclusion" | grep -q '❌'; then
+                warnings='❌ 门禁已通过但评审结论为不通过'
+                status="❌ 异常"
+                all_done=false
+            elif [ "$p0_count" -gt 0 ] && echo "$conclusion" | grep -q '✅'; then
+                warnings='⚠️ 评审结论通过但存在 P0 问题（结论与内容不一致）'
+                status="⚠️ 异常"
+                all_done=false
+            elif [ "$p0_count" -gt 0 ]; then
+                warnings="⚠️ 有 $p0_count 个 P0 未修复"
+                status="⚠️ 异常"
+                all_done=false
+            fi
+        else
+            if [ "$has_review" = true ]; then
+                if echo "$conclusion" | grep -q '❌'; then
+                    warnings="❌ 评审不通过（有 P0 阻断），需修复后重评"
+                    status="❌ 阻断"
+                elif echo "$conclusion" | grep -q '⚠️'; then
+                    warnings="⚠️ 有条件通过，可 gate.sh pass $stage 推进"
+                    status="⚠️ 待推进"
+                elif [ -z "$conclusion" ]; then
+                    warnings="⚠️ 无法解析评审结论"
+                    status="⚠️ 异常"
+                else
+                    warnings="✅ 评审通过，运行 gate.sh pass $stage"
+                    status="✅ 待推进"
+                fi
+            elif [ "$has_docs" = true ]; then
+                warnings="缺评审 → 加载 review-expert 做${review_mode}评审"
+                status="⏳ 缺评审"
+            else
+                warnings="缺文档 → 加载对应 skill 生成"
+                status="⏳ 缺文档"
+            fi
+            all_done=false
+        fi
+
+        echo "  状态:    $status"
+        [ -n "$warnings" ] && echo "  建议:    $warnings"
+        echo ""
+    done
+
+    echo "=========================================="
+    if [ "$all_done" = true ]; then
+        echo " ✅ 全链路审计通过"
+    else
+        echo " 💡 存在异常或未完成项，见上方建议"
+    fi
+    echo "=========================================="
+}
+
 # ---- main (仅在直接执行时触发，source 时不触发) ----
 if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
 case "${1:-}" in
@@ -362,12 +533,16 @@ case "${1:-}" in
     diagnose)
         do_diagnose
         ;;
+    audit)
+        do_audit
+        ;;
     *)
         echo "用法:"
         echo "  bash doc-gate.sh check <stage>     检查能否进入阶段"
         echo "  bash doc-gate.sh unpass <stage>    撤销通过标记（评审未通过时）"
         echo "  bash doc-gate.sh pass <stage>      标记阶段完成"
         echo "  bash doc-gate.sh status            查看全阶段状态"
+        echo "  bash doc-gate.sh audit             全链路审计"
         echo ""
         echo "阶段: $KNOWN_STAGES"
         echo ""
