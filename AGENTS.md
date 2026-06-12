@@ -40,7 +40,7 @@ Stages: `prd`, `arch`, `detailed`, `code`, `review`
 ## Three-Stage Coding Flow (coding-executor)
 
 1. **Pre-check**: `memory_init_session()` + `bash scripts/gate.sh pre <module> <doc>`
-2. **Code**: Read design docs in `doc/detailed/`, implement exactly per spec
+2. **Code + Doc sync**: Read design docs in `doc/detailed/`, implement exactly per spec, then sync doc for any user-requested additions
 3. **Post-check**: 5-dimension alignment check + `bash scripts/gate.sh post <module> '<report>'` + save memory
 
 ## Development Stages
