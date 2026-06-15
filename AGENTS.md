@@ -23,6 +23,7 @@ This applies to *everything*: config changes, doc edits, code fixes, even "trivi
 | `bash scripts/gate.sh pre <module> <doc>` | Pre-coding verification |
 | `bash scripts/gate.sh post <module> '<report>'` | Post-coding verification |
 | `bash scripts/gate.sh diagnose` | Diagnose gate status |
+| `bash scripts/gate.sh audit` | Audit full pipeline consistency |
 
 Stages: `prd`, `arch`, `detailed`, `code`, `review`
 
@@ -39,9 +40,7 @@ Stages: `prd`, `arch`, `detailed`, `code`, `review`
 
 ## Three-Stage Coding Flow (coding-executor)
 
-1. **Pre-check**: `memory_init_session()` + `bash scripts/gate.sh pre <module> <doc>`
-2. **Code + Doc sync**: Read design docs in `doc/detailed/`, implement exactly per spec, then sync doc for any user-requested additions
-3. **Post-check**: 5-dimension alignment check + `bash scripts/gate.sh post <module> '<report>'` + save memory
+See `.opencode/rules/coding-rules.md` for the complete three-stage flow: pre-check → code + doc sync → post-check + save memory.
 
 ## Development Stages
 

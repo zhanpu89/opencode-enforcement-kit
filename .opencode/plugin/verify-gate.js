@@ -39,16 +39,11 @@ module.exports = async ({ directory }) => {
       if (!isEditTool(tool)) return;
 
       const verifyDir = join(projectRoot, ".verify");
-      let hasPreCheck = false;
-      try {
-        hasPreCheck =
-          existsSync(verifyDir) &&
-          readdirSync(verifyDir).some(
-            (f) => f.endsWith(".ini") && !f.includes(".post.")
-          );
-      } catch (e) {
-        // .verify/ 不可读时放行（避免插件崩溃），由 gate.sh pre 重新创建
-      }
+      const hasPreCheck =
+        existsSync(verifyDir) &&
+        readdirSync(verifyDir).some(
+          (f) => f.endsWith(".ini") && !f.endsWith(".post.ini")
+        );
 
       if (hasPreCheck) return;
 

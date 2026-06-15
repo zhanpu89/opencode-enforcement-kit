@@ -354,20 +354,20 @@ analyze_report() {
     local p0_count=0
     local p1_count=0
 
-    if grep -q '✅' "$report_file"; then
-        conclusion="✅ 通过"
+    if grep -q '❌' "$report_file" || grep -q '不通过' "$report_file"; then
+        conclusion="❌ 不通过"
     elif grep -q '⚠️' "$report_file" || grep -q '有条件通过' "$report_file"; then
         conclusion="⚠️ 有条件通过"
-    elif grep -q '❌' "$report_file" || grep -q '不通过' "$report_file"; then
-        conclusion="❌ 不通过"
+    elif grep -q '✅' "$report_file"; then
+        conclusion="✅ 通过"
     fi
 
     p0_count=$(grep -c '\[P0-' "$report_file" 2>/dev/null || true)
     p1_count=$(grep -c '\[P1-' "$report_file" 2>/dev/null || true)
 
     local round_info=""
-    local round_count=$(grep -c '轮' "$report_file" 2>/dev/null || true)
-    [ "$round_count" -gt 0 ] && round_info="（第${round_count}轮）" || round_info="（单轮）"
+    local round_label=$(grep -oE '第[0-9]+轮' "$report_file" 2>/dev/null | tail -1)
+    [ -n "$round_label" ] && round_info="（${round_label}）" || round_info="（单轮）"
 
     echo "$conclusion|$p0_count|$p1_count|$round_info"
 }
@@ -381,6 +381,31 @@ do_audit() {
     local gate_file
     local block_file
 
+    # 审计所需的阶段映射
+    declare -A STAGE_DOC
+    STAGE_DOC[prd]="$DOC_DIR/prd"
+    STAGE_DOC[arch]="$DOC_DIR/arch"
+    STAGE_DOC[detailed]="$DOC_DIR/detailed"
+
+    declare -A STAGE_REVIEW_KEY
+    STAGE_REVIEW_KEY[prd]="需求评审"
+    STAGE_REVIEW_KEY[arch]="架构评审"
+    STAGE_REVIEW_KEY[detailed]="详细设计评审"
+
+    declare -A STAGE_REVIEW_MODE
+    STAGE_REVIEW_MODE[prd]="需求评审"
+    STAGE_REVIEW_MODE[arch]="架构评审"
+    STAGE_REVIEW_MODE[detailed]="详细设计评审"
+
+    STAGE_DOC[code]="src"
+    STAGE_DOC[review]="$DOC_DIR/review"
+
+    STAGE_REVIEW_KEY[code]="代码评审"
+    STAGE_REVIEW_KEY[review]="代码评审报告"
+
+    STAGE_REVIEW_MODE[code]="代码评审"
+    STAGE_REVIEW_MODE[review]="代码评审"
+
     REVIEW_DIR="$DOC_DIR/review"
 
     echo "=========================================="
@@ -390,7 +415,7 @@ do_audit() {
 
     local all_done=true
 
-    for stage in prd arch detailed; do
+    for stage in prd arch detailed code review; do
         doc_dir="${STAGE_DOC[$stage]}"
         review_key="${STAGE_REVIEW_KEY[$stage]}"
         review_mode="${STAGE_REVIEW_MODE[$stage]}"
@@ -398,9 +423,15 @@ do_audit() {
         block_file="$GATE_DIR/${stage}.blocked"
 
         # ---- 文档 ----
-        doc_count=$(ls -1 "$doc_dir/"*.md 2>/dev/null | wc -l)
-        has_docs=false
-        [ "$doc_count" -gt 0 ] && has_docs=true
+        # code 阶段检查 src/ 有代码文件，其他阶段检查 *.md 文档
+        if [ "$stage" = "code" ]; then
+            has_docs=false
+            [ -d "src" ] && local src_count=$(find src/ -type f 2>/dev/null | wc -l) && [ "$src_count" -gt 0 ] && has_docs=true
+        else
+            doc_count=$(ls -1 "$doc_dir/"*.md 2>/dev/null | wc -l)
+            has_docs=false
+            [ "$doc_count" -gt 0 ] && has_docs=true
+        fi
 
         # ---- 评审报告（取最新一份做深度分析） ----
         latest_report=""
