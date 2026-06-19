@@ -1,24 +1,10 @@
 # 后端分层模型参考
 
-> Step 2 依赖排序时加载。包含通用分层原则和各语言层次编号分配规则。
+> Step 2 依赖排序时加载。通用分层原则和各语言层次编号分配规则。
 
 ## 通用分层原则
 
-后端代码分为5层，层间依赖方向严格单向（上层依赖下层，禁止反向）：
-
-```
-Layer 4（集成层）
-    ↓ 依赖
-Layer 3（接口层）
-    ↓ 依赖
-Layer 2（业务逻辑层）
-    ↓ 依赖
-Layer 1（数据访问层）
-    ↓ 依赖
-Layer 0（基础层）
-```
-
-每份详设文档的第13节（依赖关系）必须标注所属层次，并精确到接口路径，不得只写模块名。
+后端代码分为5层，依赖严格单向（上层依赖下层，禁止反向）：`Layer 4（集成层） → Layer 3（接口层） → Layer 2（业务逻辑层） → Layer 1（数据访问层） → Layer 0（基础层）`
 
 ## Java（Spring Boot + MyBatis）
 
@@ -42,7 +28,7 @@ Layer 0（基础层）
 | Layer 3 | 对外接口 | FastAPI `Router`、Celery `Task` | `xxx_router`、`xxx_task` |
 | Layer 4 | 跨模块编排、外部集成 | HTTP Client（httpx）、外部 API 封装 | `XxxClient`、`XxxGateway` |
 
-关键约束：Pydantic Schema 分 `XxxCreate`/`XxxUpdate`/`XxxResponse` 三类，不混用；`Model` 不直接暴露给 `Router`。
+关键约束：Pydantic Schema 分 `XxxCreate`/`XxxUpdate`/`XxxResponse` 三类；`Model` 不直接暴露给 `Router`。
 
 ## Go（Gin + GORM）
 
@@ -54,7 +40,7 @@ Layer 0（基础层）
 | Layer 3 | 对外接口 | Gin `Handler` 函数、定时任务 | `XxxHandler`、`RegisterXxxRoutes` |
 | Layer 4 | 跨模块编排、外部集成 | HTTP Client、外部 API 封装 | `XxxClient`、`XxxGateway` |
 
-关键约束：接口（interface）定义在调用方包中；`Handler` 只做参数绑定 + 调用 `Service` + 返回响应；不使用 panic（除初始化）。
+关键约束：接口定义在调用方包中；`Handler` 只做参数绑定 + 调用 `Service` + 返回响应；不使用 panic（除初始化）。
 
 ## Node.js（NestJS + TypeORM / Prisma）
 
@@ -78,7 +64,5 @@ Layer 0（基础层）
 | Controller/Router/Handler（对外接口） | Layer 3 |
 | 跨模块编排、外部系统集成 | Layer 4 |
 
-> 一份文档可能跨多个层次时，标注**最高层次**，并在第13节说明各层的具体依赖。
-
----
+> 一份文档跨多个层次时，标注**最高层次**，并在第13节说明各层的具体依赖。
 

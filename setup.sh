@@ -49,12 +49,10 @@ echo "  ✅ .opencode/agent/coding-executor.md"
 echo "  ✅ .opencode/agent/verify-agent.md"
 
 # ---- 3. plugins ----
-echo "[3/7] 复制 plugins...（stage-gate.js + verify-gate.js）"
+echo "[3/7] 复制 plugins...（enforcement-gate.js）"
 mkdir -p "$TARGET/.opencode/plugin"
-safe_cp "$KIT_DIR/.opencode/plugin/stage-gate.js" "$TARGET/.opencode/plugin/stage-gate.js"
-safe_cp "$KIT_DIR/.opencode/plugin/verify-gate.js" "$TARGET/.opencode/plugin/verify-gate.js"
-echo "  ✅ .opencode/plugin/stage-gate.js"
-echo "  ✅ .opencode/plugin/verify-gate.js"
+safe_cp "$KIT_DIR/.opencode/plugin/enforcement-gate.js" "$TARGET/.opencode/plugin/enforcement-gate.js"
+echo "  ✅ .opencode/plugin/enforcement-gate.js"
 
 # ---- 4. skills ----
 echo "[4/7] 复制 skills...（prd-writer / system-architect / task-decomposer / code-reviewer / review-expert / audit-system）"
@@ -127,11 +125,11 @@ if (!target.permission.bash["*"]) {
     target.permission.bash["*"] = "ask";
 }
 
-// 合并 plugin —— stage-gate + verify-gate
+// 合并 plugin —— enforcement-gate（合并了 stage-gate + verify-gate）
 if (!Array.isArray(target.plugin)) {
     target.plugin = [];
 }
-const addPlugins = [".opencode/plugin/stage-gate.js", ".opencode/plugin/verify-gate.js"];
+const addPlugins = [".opencode/plugin/enforcement-gate.js"];
 for (const p of addPlugins) {
     if (!target.plugin.includes(p)) {
         target.plugin.push(p);

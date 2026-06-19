@@ -15,6 +15,14 @@ mode: subagent
 
 ## 执行流程
 
+### 子步骤 0：查询历史验证记录
+
+调以下 MCP 工具获取验证上下文：
+- `memory_init_session(project_name="当前项目")`
+- `memory_related_decisions(project_name="当前项目", query="{模块名}|验证失败|P0", limit=5)`
+
+如果发现同一模块有重复验证失败记录（如同维度连续不通过），对该维度加倍严格核对。
+
 ### 子步骤 1：获取任务信息
 
 从调用方获取：

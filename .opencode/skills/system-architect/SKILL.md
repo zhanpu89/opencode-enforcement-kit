@@ -13,88 +13,26 @@ description: |
   - 已有 SAD，需任务分解（task-decomposer）
 ---
 
-## 记忆集成（跨会话上下文）
-
-本 skill 利用 `ai_memory` MCP 工具实现跨会话上下文持久化。
-
-### 加载上下文（每次启动时首先执行）
-
-在 Step 1 之前执行：
-
-```
-memory_init_session(project_name="当前项目")
-memory_search_summaries(module="当前模块", tags="arch", limit=5)
-memory_search_summaries(module="当前模块", tags="prd", limit=3)
-memory_related_decisions(project_name="当前项目", query="架构|技术选型", limit=10)
-```
-
-### 保存关键决策
-
-在 Step 3（PRD 分析 + NFR 量化）结束后，调用：
-```
-memory_add_decision(
-  session_id=session-{YYYYMMDD}-arch-{module},
-  decision_type=技术方案,
-  description="NFR 量化值/技术选型结果/关键架构决策",
-  reasoning="基于PRD约束/团队经验/行业最佳实践"
-)
-```
-
-在 Step 4（架构设计）技术选型完成后，调用：
-```
-memory_add_decision(
-  session_id=session-{YYYYMMDD}-arch-{module},
-  decision_type=架构选型,
-  description="技术栈选型与组件选择决策",
-  reasoning="6维度论证结果"
-)
-```
-
-### 保存任务摘要
-
-在 Step 4 全部生成完成后，调用：
-```
-memory_save_summary(
-  session_id=session-{YYYYMMDD}-arch-{module},
-  task_title="架构: {模块/项目名}",
-  summary_content=架构设计摘要（包含技术栈/模块划分/NFR指标）、
-  file_paths=doc/arch/下生成的SAD文件路径（逗号分隔）、
-  project_name=当前项目名、
-  tags=arch,架构,{模块名}、
-  module={模块名}、
-  status=completed、
-  next_steps="进入详细设计阶段，使用 task-decomposer"
-)
-```
+## 上下文记忆
+init_session + search_summaries(tags="arch", limit=3) + related_decisions(query="架构|技术选型")
+完成时 add_decision(reasoning="含被否方案和约束条件") + save_summary(next_steps="进入详细设计阶段")
 
 # 系统架构师
 
 将 PRD 转化为生产级架构文档。输入：`doc/prd/`；输出：`doc/arch/`。
 
-## 懒加载原则（Lazy Loading）
-
-1. **必须按需加载**：未到使用阶段的文件不得提前加载
-2. **用完即释放**：某文件不再需要后，不再作为后续上下文保留
-3. **阶段文件**：reference 按阶段拆分，各在对应阶段加载
-4. **端专属模板**：`end-specific.md` 按需跳转对应 `##` 节
-
-## 合并原则（Merge, don't split）
-
-1. **端模板合并为一个文件**：前端/小程序专属章节合并为 `end-specific.md`，禁止拆分为独立文件
-2. **按 `##` 节跳转**：合并文件内用 `##` 节区分不同端，加载后跳转到对应节即可
-
 ## 参考文件（按需加载）
 
-| 文件 | 加载时机 | 释放时机 | 行数 |
-|------|---------|---------|------|
-| `templates/common.md` | Step 4 前——SAD 通用骨架 | *全部分段生成结束后* | 295 |
-| `templates/end-specific.md` | Step 4 前——端专属章节（按端跳转对应 `##` 节） | *全部分段生成结束后* | 159 |
-| `templates/tech-stack.md` | Step 4 生成 tech-stack.json 前 | *生成完成后* | 147 |
-| `resources/tech-selection.md` | Step 4 前——技术选型 + SAD 边界 | *技术栈章节完成后* | 123 |
-| `resources/nfr-quantify.md` | Step 3 前——NFR 量化指标 | *Step 4 架构设计前* | 22 |
-| `resources/db-security-integration.md` | Step 4 前——数据库/安全/特殊集成（按需跳转 `##` 节） | *对应章节完成后* | 134 |
-| `resources/overlays.md` | Step 2 探测到语言后——跳转对应 `##` 语言节 | *安全设计章节完成后* | 471 |
-| `resources/glossary.md` | 首次触发——术语/架构模式 | *全部分段生成结束后* | 111 |
+| 文件 | 加载时机 | 释放时机 |
+|------|---------|---------|
+| `templates/common.md` | Step 4 前——SAD 通用骨架 | *全部分段生成结束后* |
+| `templates/end-specific.md` | Step 4 前——端专属章节（按端跳转对应 `##` 节） | *全部分段生成结束后* |
+| `templates/tech-stack.md` | Step 4 生成 tech-stack.json 前 | *生成完成后* |
+| `resources/tech-selection.md` | Step 4 前——技术选型 + SAD 边界 | *技术栈章节完成后* |
+| `resources/nfr-quantify.md` | Step 3 前——NFR 量化指标 | *Step 4 架构设计前* |
+| `resources/db-security-integration.md` | Step 4 前——数据库/安全/特殊集成（按需跳转 `##` 节） | *对应章节完成后* |
+| `resources/overlays.md` | Step 2 探测到语言后——跳转对应 `##` 语言节 | *安全设计章节完成后* |
+| `resources/glossary.md` | 首次触发——术语/架构模式 | *全部分段生成结束后* |
 
 ## 工作流
 
@@ -112,26 +50,25 @@ memory_save_summary(
 **A. 端类型（决定拆分）：** 纯后端→单文件；含Web→后端+前端；含小程序→后端+小程序；多端→后端+各端+概览。
 **B. 目标语言（决定 Overlay）：** 优先用户指定→PRD约束→特征文件(`pom.xml`/`go.mod`/`package.json`)→询问。未回复则等待。
 
-加载 `resources/overlays.md` 对应语言章节。
+按参考文件表加载。
 
 ### Step 3：PRD 分析
 
-加载 `resources/nfr-quantify.md`。识别业务功能/数据实体、NFR 指标量化、安全合规、特殊集成、技术约束。仅对 PRD 确实缺失的信息提问。
+按参考文件表加载。识别业务功能/数据实体、NFR 指标量化、安全合规、特殊集成、技术约束。仅对 PRD 确实缺失的信息提问。
 
-> 释放提示：Step 3 结束时 `nfr-quantify.md` 不再需要，可释放。
 
 ### Step 4：架构设计与文档生成
 
-释放 `nfr-quantify.md`（如仍占用）。加载 `templates/common.md` + `templates/end-specific.md` + `templates/tech-stack.md` + `resources/tech-selection.md` + `resources/db-security-integration.md`。
+按参考文件表加载。
 - **技术选型：** 使用 `tech-selection.md` 技术选型节，6个维度论证
-- **安全：** `db-security-integration.md` 安全节 + `overlays.md` 对应语言安全节。安全章节完成后可释放 `overlays.md`
+- **安全：** `db-security-integration.md` 安全节 + `overlays.md` 对应语言安全节。
 - **数据库：** `db-security-integration.md` 数据库节 + `overlays.md` 对应语言数据库节
-- **特殊集成：** 涉及区块链/支付/文件存储时加载 `db-security-integration.md` 特殊集成节
+- **特殊集成：** 涉及区块链/支付/文件存储时加载特殊集成节
 - **SAD 边界：** 使用 `tech-selection.md` SAD 边界节控制粒度
 - **分批写入：** 每生成一份立即写入
 - **文档合并：** 逐节对比增量修改，禁止整文件重写
 
-`end-specific.md` 在一次 Step 4 中只需加载一次，多端时写完后跳转到下一个端对应的 `##` 节。
+端专属模板在一次 Step 4 中只需加载一次，多端时写完后跳转到下一个端对应的 `##` 节。
 
 ## 核心原则
 

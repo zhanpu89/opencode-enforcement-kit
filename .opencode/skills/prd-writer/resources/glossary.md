@@ -2,6 +2,8 @@
 
 > 本文件定义 prd-writer 技能中使用的业务术语和缩写，供 AI 在生成 PRD 时保持术语一致性。
 
+# trimmed: removed 6 common-knowledge entries
+
 ---
 
 ## 核心术语
@@ -10,14 +12,8 @@
 |-----|------|---------|
 | **端** | 系统的一个独立用户入口（如 Web 前端、微信小程序、后端服务） | Step 0 端类型识别 |
 | **端类型** | 端的技术形态分类（后端 / Web 前端 / 微信小程序 / 多端并存） | Step 0 锁定阶段 |
-| **PRD** | 产品需求文档（Product Requirements Document），描述"做什么"和"为什么" | 全流程 |
-| **AC** | 验收标准（Acceptance Criteria），Given/When/Then 格式，描述功能完成的业务判断依据 | Step 3 功能需求 |
-| **MoSCoW** | 优先级分级方法：M（必须有）/ S（应该有）/ C（可以有）/ W（不做） | Step 3 功能列表 |
 | **SAD** | 架构设计文档（Software Architecture Document），prd-writer 的下游产物 | 输出说明 |
 | **概览文件** | `{项目名}_PRD_概览.md`，多端项目的入口文件，声明端类型和各端文档路径 | 多端场景 Step 3 |
-| **范围内 / 范围外** | 本次明确要做 / 明确不做的功能边界 | 第 2 节项目范围 |
-| **KANO 模型** | 需求优先级评估模型，区分基本型 / 期望型 / 兴奋型需求 | Step 2 澄清阶段 |
-| **5W1H** | 结构化提问框架：Who / What / Why / When / Where / How | Step 1 访谈阶段 |
 
 ---
 

@@ -32,7 +32,6 @@
     }
   },
   "plugin": [
-    ".opencode/plugin/stage-gate.js",
-    ".opencode/plugin/verify-gate.js"
+    ".opencode/plugin/enforcement-gate.js"
   ]
 }

@@ -12,88 +12,36 @@ description: |
   - 纯技术问答
 ---
 
-## 记忆集成（跨会话上下文）
-
-本 skill 利用 `ai_memory` MCP 工具实现跨会话上下文持久化。
-
-### 加载上下文（每次启动时首先执行）
-
-在 Step 0 之前执行：
-
-```
-memory_init_session(project_name="当前项目")
-memory_search_summaries(module="当前模块", tags="code-review", limit=5)
-memory_search_summaries(module="当前模块", tags="coding", limit=3)
-memory_related_decisions(project_name="当前项目", query="代码评审|审查", limit=10)
-```
-
-### 保存关键决策
-
-在 Step 1.5（问题分级汇总）时，调用：
-```
-memory_add_decision(
-  session_id=session-{YYYYMMDD}-review-code-{module},
-  decision_type=代码评审,
-  description="P0/P1 问题清单与阻断结论",
-  reasoning="检查清单+安全规则+设计文档比对结果"
-)
-```
-
-### 保存任务摘要
-
-在 Step 2（评审报告生成）完成后，调用：
-```
-memory_save_summary(
-  session_id=session-{YYYYMMDD}-review-code-{module},
-  task_title="代码评审: {模块名}",
-  summary_content=评审摘要（包含P0/P1数量/评审结论/主要问题类型）、
-  file_paths=doc/review/下生成的评审报告路径、
-  project_name=当前项目名、
-  tags=code-review,代码评审,{模块名}、
-  module={模块名}、
-  status=completed、
-  next_steps="如有P0需coding-executor修复后重新评审；归零后 gate.sh pass review"
-)
-```
+## 上下文记忆
+init_session + search_summaries(tags="code-review", limit=3) + related_decisions(query="代码评审|审查")
+完成时 add_decision(reasoning="含被否方案和约束条件") + save_summary(next_steps="gate.sh pass review")
 
 # Code Reviewer
 
 对代码进行全面评审，输出报告和质量门禁结论。纯后端模式（五维度）或全栈模式（七维度）。
 
-## 懒加载原则（Lazy Loading）
-
-1. **语言特化项按 LC-001 加载**：`lang-ext.md` 包含 4 种语言检查项，只在对应 LC-001 时加载对应 `##` 节
-2. **前端检查仅在全栈模式加载**：`frontend-review-checklist.md` 仅在维度 6 前加载
-3. **用完即释放**：各文件在其对应阶段完成后释放
-
-## 合并原则（Merge, don't split）
-
-1. **语言特化检查项合并于 `lang-ext.md`**：4 种语言的特化项合并为一个文件，按 `##` 节跳转对应语言
-2. **前后端检查清单独立**：后端（`review-checklist.md`）与前端（`frontend-review-checklist.md`）生命周期不同（后者仅全栈模式），保持独立
-3. **报告模板保持合并**：`report-template.md` 含两种模式模板，按模式跳转对应节
-
 ## 参考文件（按需加载）
 
-| 文件 | 加载时机 | 释放时机 | 行数 |
-|------|---------|---------|------|
-| `resources/glossary.md` | 首次触发——术语、等级定义、评审维度 | *全流程结束后* | 201 |
-| `resources/review-checklist.md` | Step 1 前——后端维度1~5检查清单 | *Step 1 完成后* | 247 |
-| `resources/lang-ext.md` | Step 1 前——语言特化检查项（按 LC-001 跳转对应 `##` 节） | *Step 1 完成后* | 170 |
-| `resources/frontend-review-checklist.md` | 全栈模式维度6前——前端六维度检查清单 | *Step 1 完成后* | 330 |
-| `templates/report-template.md` | Step 2 前——评审报告模板（按模式跳转对应节） | *报告生成完成后* | 407 |
-| `doc/detailed/项目规则.md` | Step 0——读取 LC/ER 约束作为评审依据 | *Step 1 开始前* | - |
+| 文件 | 加载时机 | 释放时机 |
+|------|---------|---------|
+| `resources/glossary.md` | 首次触发——术语、等级定义、评审维度 | *全流程结束后* |
+| `resources/review-checklist.md` | Step 1 前——后端维度1~5检查清单 | *Step 1 完成后* |
+| `resources/lang-ext.md` | Step 1 前——语言特化检查项（按 LC-001 跳转对应 `##` 节） | *Step 1 完成后* |
+| `resources/frontend-review-checklist.md` | 全栈模式维度6前——前端六维度检查清单 | *Step 1 完成后* |
+| `templates/report-template.md` | Step 2 前——评审报告模板（按模式跳转对应节） | *报告生成完成后* |
+| `doc/detailed/项目规则.md` | Step 0——读取 LC/ER 约束作为评审依据 | *Step 1 开始前* |
 
 ## 工作流
 
 ### Step 0：就绪检查与模式感知
-读取 `doc/detailed/项目规则.md` 提取 LC / 项目专属 ER 约束。加载 `resources/glossary.md`。扫描 `src/` 和 `frontend/`。确认范围（纯后端/全栈）。
+读取 `doc/detailed/项目规则.md` 提取 LC / 项目专属 ER 约束。按参考文件表加载。扫描 `src/` 和 `frontend/`。确认范围（纯后端/全栈）。
 
 ### Step 0.5：增量评审识别
 检测多轮评审（`doc/review/` 已有本模块报告）→ 优先核查上轮问题修复情况。
 
 ### Step 1：评审执行
 
-加载 `resources/review-checklist.md`（维度1~5通用层）+ 按 LC-001 加载 `resources/lang-ext.md` 对应 `##` 节。
+按参考文件表加载（维度1~5通用层）+ 按 LC-001 加载对应语言特化检查项。
 
 **维度0：前后端契约一致性（全栈模式，最高优先级）**
 以详设第3节 OpenAPI 为唯一来源：
@@ -104,19 +52,15 @@ memory_save_summary(
 
 **维度1~5（后端）：** 编码规范 / 业务逻辑一致性 / 安全漏洞 / 性能反模式 / 可维护性
 
-**维度6（全栈模式）：** 加载 `resources/frontend-review-checklist.md`，执行前端专项审查（Vue3/React）
+**维度6（全栈模式）：** 按参考文件表加载，执行前端专项审查（Vue3/React）
 
 问题分级：P0（安全/数据丢失/契约断裂）→ 阻断；P1（性能/规则违反）→ 建议阻断；P2（可维护性）→ 建议
-
-> 释放提示：Step 1 完成后检查清单和语言特化项不再需要，可释放。
 
 ### Step 1.5：问题分级与汇总
 评审结论：✅ 通过（无P0，P1≤2）| ⚠️ 有条件通过（无P0，P1>2）| ❌ 不通过（存在P0）
 
 ### Step 2：评审报告生成
-加载 `templates/report-template.md`，按评审模式跳转对应节。输出 `doc/review/{模块名}_代码评审报告{_RN}.md`。多轮含"上轮问题修复情况"节。
-
-> 释放提示：报告生成完成后 `report-template.md` 可释放。
+按参考文件表加载，按评审模式跳转对应节。输出 `doc/review/{模块名}_代码评审报告{_RN}.md`。多轮含"上轮问题修复情况"节。
 
 **保存前检查**：头部含编号/版本/状态，全栈模式含维度0和维度6节，多轮含回顾节
 

@@ -13,74 +13,23 @@ description: |
   - 需要架构设计（system-architect）
 ---
 
-## 记忆集成（跨会话上下文）
-
-本 skill 利用 `ai_memory` MCP 工具实现跨会话上下文持久化。
-
-### 加载上下文（每次启动时首先执行）
-
-在 Step 0 之前执行：
-
-```
-memory_init_session(project_name="当前项目")
-memory_search_summaries(module="当前模块", tags="prd", limit=5)
-memory_related_decisions(project_name="当前项目", query="PRD|需求", limit=10)
-```
-
-### 保存关键决策
-
-在 Step 2（多轮澄清）结束后，调用 `memory_add_decision()` 记录需求定义：
-```
-memory_add_decision(
-  session_id=session-{YYYYMMDD}-prd-{module},
-  decision_type=需求定义,
-  description="核心用户故事/AC/优先级决策摘要",
-  reasoning="基于KANO模型/用户反馈/约束条件"
-)
-```
-
-### 保存任务摘要
-
-在 Step 3（PRD 生成）完成后，调用 `memory_save_summary()`：
-```
-memory_save_summary(
-  session_id=session-{YYYYMMDD}-prd-{module},
-  task_title="PRD: {模块/项目名}",
-  summary_content=生成内容摘要（包含功能清单/AC数量/关键决策）、
-  file_paths=doc/prd/下生成的PRD文件路径（逗号分隔）、
-  project_name=当前项目名、
-  tags=prd,需求,{模块名}、
-  module={模块名}、
-  status=completed、
-  next_steps="进入架构设计阶段，使用 system-architect"
-)
-```
+## 上下文记忆
+init_session + search_summaries(tags="prd", limit=3) + related_decisions(query="PRD|需求")
+完成时 add_decision(reasoning="含被否方案和约束条件") + save_summary(next_steps="进入架构设计阶段")
 
 # PRD Writer
 
 通过结构化需求访谈生成专业 PRD。扮演资深需求分析师：理解想法→多轮澄清→验证可落地→生成 PRD。
 
-## 懒加载原则（Lazy Loading）
-
-1. **必须按需加载**：未到使用阶段的文件不得提前加载
-2. **用完即释放**：某文件不再需要后，不再作为后续上下文保留
-3. **端专属模板**：只加载当前端类型对应的模板，不加载无关模板
-4. **分步加载**：访谈框架与填写指南拆分为独立文件，各在对应阶段加载
-
-## 合并原则（Merge, don't split）
-
-1. **端模板合并为一个文件**：后端/前端/小程序专属章节合并为 `end-specific.md`，禁止拆分为独立文件
-2. **按 `##` 节跳转**：合并文件内用 `##` 节区分不同端，加载后跳转到对应节即可
-
 ## 参考文件（按需加载）
 
-| 文件 | 加载时机 | 释放时机 | 行数 |
-|------|---------|---------|------|
-| `resources/interview-framework.md` | Step 1 前——访谈与提问框架 | Step 3 生成 PRD 前 | 162 |
-| `resources/filling-guide.md` | Step 3 前——PRD 填写指南与行业基准 | *全部分段生成结束后* | 222 |
-| `resources/glossary.md` | Step 3 前——术语表/禁用词汇 | *全部分段生成结束后* | 53 |
-| `templates/common.md` | Step 3 前——通用章节骨架（所有文档共享） | *全部分段生成结束后* | 329 |
-| `templates/end-specific.md` | Step 3 前——端专属章节（按端类型跳转对应 `##` 节） | *全部分段生成结束后* | 388 |
+| 文件 | 加载时机 | 释放时机 |
+|------|---------|---------|
+| `resources/interview-framework.md` | Step 1 前——访谈与提问框架 | Step 3 生成 PRD 前 |
+| `resources/filling-guide.md` | Step 3 前——PRD 填写指南与行业基准 | *全部分段生成结束后* |
+| `resources/glossary.md` | Step 3 前——术语表/禁用词汇 | *全部分段生成结束后* |
+| `templates/common.md` | Step 3 前——通用章节骨架（所有文档共享） | *全部分段生成结束后* |
+| `templates/end-specific.md` | Step 3 前——端专属章节（按端类型跳转对应 `##` 节） | *全部分段生成结束后* |
 
 > **所有资源**：加载时机未到不得加载；端专属模板只加载当前端对应的一个。
 
@@ -96,29 +45,27 @@ memory_save_summary(
 
 ### Step 1：初步理解
 
-加载 `resources/interview-framework.md`。用 5W1H 框架复述理解+识别缺口+提 5~8 个问题。用户描述极度模糊时先锁端类型再问业务目标。
+按参考文件表加载。用 5W1H 框架复述理解+识别缺口+提 5~8 个问题。用户描述极度模糊时先锁端类型再问业务目标。
 
 ### Step 2：多轮澄清
 
 每轮 5~8 个问题（继续使用 `resources/interview-framework.md` 中的框架）：边界澄清、用户与场景、异常边界、冲突处理、KANO 优先级、端专属问题。连续两轮用户无法回答则记录"待补充"继续。
 
-> 释放提示：Step 2 结束时 `interview-framework.md` 不再需要，可释放上下文中不再保留。
-
 ### Step 3：PRD 生成
 
-范围确认清单全部满足后执行。释放 `interview-framework.md`（如仍占用）。按 Step 0 锁定的端类型清单，按需加载以下文件：
+范围确认清单全部满足后执行。按 Step 0 锁定的端类型清单，按参考文件表加载：
 
 **必加载（所有端类型都需）：**
-- `resources/filling-guide.md`
-- `resources/glossary.md`
-- `templates/common.md`
+- PRD 填写指南与行业基准
+- 术语表/禁用词汇
+- 通用章节骨架
 
-**端模板（加载 `templates/end-specific.md`，按端类型跳转对应章节）：**
+**端模板（按端类型跳转对应章节）：**
 - 含"后端"端类型 → 跳转 `## 后端专属章节`
 - 含"Web 前端"端类型 → 跳转 `## Web 前端专属章节`
 - 含"小程序"端类型 → 跳转 `## 微信小程序专属章节`
 
-**生成顺序：** 多端时先 `_概览.md`，再各端独立文档。`end-specific.md` 在一次 Step 3 中只需加载一次，每生成一份文档后跳转到下一个端对应的 `##` 节。
+**生成顺序：** 多端时先 `_概览.md`，再各端独立文档。端专属模板在一次 Step 3 中只需加载一次，每生成一份文档后跳转到下一个端对应的 `##` 节。
 
 生成后执行对应模板文件中的质量检查清单，不通过项立即修复再保存。
 

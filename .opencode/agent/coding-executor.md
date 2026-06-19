@@ -16,7 +16,8 @@ mode: subagent
 **子步骤 1：加载项目记忆**
 调以下 MCP 工具获取项目上下文（如果项目已集成 ai_memory）：
 - `memory_init_session(project_name="当前项目")` — 查看进行中的任务
-- `memory_search_summaries(project_name="当前项目", limit=5)` — 查看历史记录
+- `memory_search_summaries(project_name="当前项目", limit=3)` — 查看历史记录
+- `memory_related_decisions(project_name="当前项目", query="架构|技术选型|API契约|数据模型", limit=5)` — 查看上游架构决策，编码时自动遵循
 
 阅读返回结果，了解项目背景和未完成的工作。
 
@@ -117,7 +118,7 @@ verify-agent 的工作方式：
 **Review Fix Mode 流程：**
 
 ```
-1. 调 memory_init_session() + memory_search_summaries()
+1. 调 memory_init_session() + memory_search_summaries() + memory_related_decisions(query="架构|技术选型")
    → 查看上下文，确认是评审修复任务
 2. 阅读 code-reviewer 输出的问题清单
    → 定位：哪些文件、什么错误、期望结果

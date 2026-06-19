@@ -14,75 +14,25 @@ description: |
   - 纯技术问答
 ---
 
-## 记忆集成（跨会话上下文）
-
-本 skill 利用 `ai_memory` MCP 工具实现跨会话上下文持久化。
-
-### 加载上下文（每次启动时首先执行）
-
-在 Step 0 之前执行：
-
-```
-memory_init_session(project_name="当前项目")
-memory_search_summaries(module="当前模块", tags="review", limit=5)
-memory_search_summaries(module="当前模块", limit=3)
-memory_related_decisions(project_name="当前项目", query="评审", limit=10)
-```
-
-### 保存关键决策
-
-在 Step 4（评审报告生成）前，调用：
-```
-memory_add_decision(
-  session_id=session-{YYYYMMDD}-review-{docType}-{module},
-  decision_type=评审结论,
-  description="阻断项清单与评审结论（通过/有条件/不通过）",
-  reasoning="检查清单+风险等级评估结果"
-)
-```
-
-### 保存任务摘要
-
-在 Step 4 完成后，调用：
-```
-memory_save_summary(
-  session_id=session-{YYYYMMDD}-review-{docType}-{module},
-  task_title="评审: {docType} - {模块名}",
-  summary_content=评审摘要（包含P0数量/结论/下一步行动）、
-  file_paths=doc/review/下生成的评审报告路径、
-  project_name=当前项目名、
-  tags=review,评审,{模块名}、
-  module={模块名}、
-  status=completed、
-  next_steps="如阻断则修复后重新提交评审；通过则 gate.sh pass {stage}"
-)
-```
+## 上下文记忆
+init_session + search_summaries(tags="review", limit=3) + related_decisions(query="评审")
+完成时 add_decision(reasoning="含被否方案和约束条件") + save_summary(next_steps="gate.sh pass {stage}")
 
 # Review Expert
 
 基于"因果链闭环"方法论，对产出物进行结构化评审，阻断不合格物进入下一阶段。
 
-## 懒加载原则（Lazy Loading）
-
-1. **按评审类型加载检查清单**：`check-*.md` 按评审类型（需求/架构/详细设计/测试用例）拆分，只在对应模式 Step 2 加载
-2. **用完即释放**：对应评审类型完成后释放，不保留到 Step 4
-
-## 合并原则（Merge, don't split）
-
-1. **报告模板合并于一个文件**：4 种评审报告模板合并为 `report-template.md`，按 `## 模板X` 节跳转
-2. **检查清单按类型独立文件**：各评审类型检查清单生命周期不同（Step 2 只加载一种），不强行合并
-
 ## 参考文件（按需加载）
 
-| 文件 | 加载时机 | 释放时机 | 行数 |
-|------|---------|---------|------|
-| `resources/glossary.md` | 首次触发——术语、等级定义、评审维度 | *全流程结束后* | 158 |
-| `resources/check-common.md` | Step 0 后——就绪检查 + 通用文档质量（全流程保留） | *报告生成完成后* | 47 |
-| `resources/check-req.md` | Step 2 需求评审时——需求评审检查清单 | *Step 2 完成后* | 79 |
-| `resources/check-arch.md` | Step 2 架构评审时——架构评审检查清单 | *Step 2 完成后* | 80 |
-| `resources/check-detailed.md` | Step 2 详细设计/多端详设评审时——详设+跨端对齐检查清单 | *Step 2 完成后* | 306 |
-| `resources/check-test.md` | Step 2 测试用例评审时——测试用例评审检查清单 | *Step 2 完成后* | 76 |
-| `templates/report-template.md` | Step 4 前——4种评审报告模板+全流程追溯矩阵合并为5 `##` 节（按模式跳转对应节） | *报告生成完成后* | 692 |
+| 文件 | 加载时机 | 释放时机 |
+|------|---------|---------|
+| `resources/glossary.md` | 首次触发——术语、等级定义、评审维度 | *全流程结束后* |
+| `resources/check-common.md` | Step 0 后——就绪检查 + 通用文档质量（全流程保留） | *报告生成完成后* |
+| `resources/check-req.md` | Step 2 需求评审时——需求评审检查清单 | *Step 2 完成后* |
+| `resources/check-arch.md` | Step 2 架构评审时——架构评审检查清单 | *Step 2 完成后* |
+| `resources/check-detailed.md` | Step 2 详细设计/多端详设评审时——详设+跨端对齐检查清单 | *Step 2 完成后* |
+| `resources/check-test.md` | Step 2 测试用例评审时——测试用例评审检查清单 | *Step 2 完成后* |
+| `templates/report-template.md` | Step 4 前——4种评审报告模板+全流程追溯矩阵合并为5 `##` 节（按模式跳转对应节） | *报告生成完成后* |
 
 ## 风险等级
 
@@ -124,7 +74,7 @@ memory_save_summary(
 - **用户未指定** → 询问用户要评审哪个阶段的文档，不进全流程
 - **全流程评审** → 仅当用户明确要求"全流程评审"时才进入，且评审❌时立即停止
 
-**3. 就绪检查：** 加载 `resources/check-common.md` → 「零、就绪检查清单」，任意不满足则返回"文档未就绪"。术语参考 `resources/glossary.md`。
+**3. 就绪检查：** 按参考文件表加载 → 「零、就绪检查清单」，任意不满足则返回"文档未就绪"。术语参考 `resources/glossary.md`。
 
 ### Step 1：风险热点识别
 
@@ -132,11 +82,7 @@ memory_save_summary(
 
 ### Step 2：分类评审执行
 
-根据评审模式加载对应检查清单：
-- **需求评审** → 加载 `resources/check-req.md`
-- **架构评审** → 加载 `resources/check-arch.md`
-- **详细设计/多端详设评审** → 加载 `resources/check-detailed.md`
-- **测试用例评审** → 加载 `resources/check-test.md`
+根据评审模式按参考文件表加载对应检查清单。
 
 **详细设计/多端详设前置动作：**
 - **A. 上游正向比对：** 尝试读 `doc/arch/` 和 `doc/prd/`，比对接口完整性（缺失=P0）
@@ -144,7 +90,7 @@ memory_save_summary(
 
 文档信息缺失>30%时直接输出❌不通过。
 
-> 释放提示：Step 2 完成后对应检查清单不再需要，可释放。
+
 
 ### Step 3：因果链追溯（仅全流程评审）
 
@@ -152,21 +98,10 @@ memory_save_summary(
 
 ### Step 4：评审报告生成
 
-加载 `templates/report-template.md`，按评审模式跳转对应 `## 模板X` 节。输出 `doc/review/{项目/模块名}_{类型}评审报告.md`。
+按参考文件表加载，按评审模式跳转对应 `## 模板X` 节。输出 `doc/review/{项目/模块名}_{类型}评审报告.md`。
 
-> 释放提示：报告生成完成后 `report-template.md` 可释放。
-
-## 流水线（概览 — 每阶段独立运行，❌阻断后停止）
-
-```
-PRD ──→ [review-expert: 需求评审] ──❌ 阻断，停止
-              ↓ ✅（进入下一阶段）
-SAD ──→ [review-expert: 架构评审] ──❌ 阻断，停止
-              ↓ ✅
-详设 ──→ [review-expert: 详设评审] ──❌ 阻断，停止
-```
-
-每次只执行一个阶段的评审。当前阶段 ❌ 不通过时，**不继续下一阶段**。修复重评通过后再进入下一阶段。
+## 流水线
+PRD → [review-expert] → ❌阻断 / ✅下一阶段 → SAD → [review-expert] → ... 每次只评审一个阶段。❌不通过时停止，不继续下一阶段。
 
 ## 全局熔断
 

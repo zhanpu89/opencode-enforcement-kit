@@ -1,6 +1,6 @@
 # AI 编码门禁套件
 
-将编码门禁注入任何 opencode 项目的零成本方案。一套统一 CLI + 两层 Plugin 防御。
+将编码门禁注入任何 opencode 项目的零成本方案。一套统一 CLI + Plugin 双重防御。
 
 ## 一句话用法
 
@@ -10,11 +10,12 @@ bash scripts/gate.sh pass arch              # 架构评审通过
 bash scripts/gate.sh unpass detailed "字段类型不一致"  # 详设评审未通过
 bash scripts/gate.sh status                 # 一看全貌
 bash scripts/gate.sh diagnose               # 诊断门禁状态
+bash scripts/gate.sh audit                  # 全链路审计
 bash scripts/gate.sh pre user doc/detailed/user.md  # 编码前验证
 bash scripts/gate.sh post user 'biz=ok...'         # 编码后验证
 ```
 
-**一个命令 `gate.sh`，8 个动词。**
+**一个命令 `gate.sh`，9 个动词。**
 
 ## 文件结构
 
@@ -31,8 +32,7 @@ bash scripts/gate.sh post user 'biz=ok...'         # 编码后验证
 │   │   ├── coding-executor.md      # 编码执行 agent
 │   │   └── verify-agent.md         # 独立编码验证 agent
 │   ├── plugin/
-│   │   ├── stage-gate.js           # 阶段门禁插件
-│   │   └── verify-gate.js          # 编码验证插件
+│   │   └── enforcement-gate.js     # 编码门禁插件（阶段+验证双重阻断）
 │   ├── rules/
 │   │   ├── coding-rules.md         # AI 编码铁律
 │   │   ├── endpoint-lock.md        # 端锁定规则
@@ -42,7 +42,8 @@ bash scripts/gate.sh post user 'biz=ok...'         # 编码后验证
 │       ├── system-architect/       # 架构设计
 │       ├── task-decomposer/        # 详细设计
 │       ├── code-reviewer/          # 代码评审
-│       └── review-expert/          # 全流程评审
+│       ├── review-expert/          # 全流程评审
+│       └── audit-system/           # 全链路审计
 ├── doc/
 │   └── .gate/                      # 阶段标记目录
 └── .verify/                        # 编码验证记录
@@ -73,5 +74,4 @@ bash setup.sh /path/to/target      # 安装到其他项目
 |----|------|------|
 | Agent 指令 | coding-executor.md + verify-agent.md + .opencode/rules/ | 三阶段流程 + 独立验证 + 编码铁律 |
 | 文档门禁 | `gate.sh check/pass/unpass` | 按阶段推进 + 人工阻断 |
-| 阶段门禁 Plugin | `stage-gate.js` | 无 detailed.pass 阻断代码编辑 |
-| 编码门禁 Plugin | `verify-gate.js` | 无 .verify 记录阻断编辑 |
+| 编码门禁 Plugin | `enforcement-gate.js` | 阶段门禁 + 编码验证双重阻断 |
